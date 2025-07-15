@@ -8,6 +8,7 @@ import os
 from typing import Dict, List, Any
 import openai
 from dotenv import load_dotenv
+import hashlib
 
 load_dotenv()
 
@@ -37,11 +38,22 @@ class PolicyChecker:
         
         # Load policy templates
         self.policy_templates = self._load_policy_templates()
+        
+        # Simple cache for policy checks
+        self._cache = {}
+        self._max_cache_size = 50
     
     def check_compliance(self, architecture_analysis: Dict[str, Any], environment: str) -> Dict[str, Any]:
         """
         Check architecture compliance against Azure policies
         """
+        # Check cache first
+        cache_key = self._get_cache_key(architecture_analysis, environment)
+        cached_result = self._get_from_cache(cache_key)
+        if cached_result:
+            print("🔍 Policy Checker: Using cached result")
+            return cached_result
+        
         try:
             # Get environment-specific policies
             applicable_policies = self._get_environment_policies(environment)
@@ -74,6 +86,9 @@ class PolicyChecker:
                 response.choices[0].message.content,
                 environment
             )
+            
+            # Save to cache
+            self._save_to_cache(cache_key, compliance_result)
             
             return compliance_result
             
@@ -408,3 +423,19 @@ class PolicyChecker:
 """
         
         return report
+    
+    def _get_cache_key(self, architecture_analysis, environment):
+        """Generate cache key from analysis and environment"""
+        key_data = f"{str(architecture_analysis)}{environment}"
+        return hashlib.md5(key_data.encode()).hexdigest()
+    
+    def _get_from_cache(self, cache_key):
+        """Get cached result if available"""
+        return self._cache.get(cache_key)
+    
+    def _save_to_cache(self, cache_key, result):
+        """Save result to cache"""
+        if len(self._cache) >= self._max_cache_size:
+            oldest_key = next(iter(self._cache))
+            del self._cache[oldest_key]
+        self._cache[cache_key] = result

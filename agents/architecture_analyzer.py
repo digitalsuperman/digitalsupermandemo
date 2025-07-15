@@ -9,6 +9,7 @@ from typing import Dict, List, Any
 import openai
 import os
 from dotenv import load_dotenv
+import hashlib
 
 load_dotenv()
 
@@ -36,10 +37,37 @@ class ArchitectureAnalyzer:
             self.model_name = "gpt-4"
             print(f"⚠️ Architecture Analyzer: Using OpenAI fallback (configure Azure AI Foundry for production)")
         
+        # Simple cache for repeated content
+        self._cache = {}
+        self._max_cache_size = 100  # Limit cache size
+    
+    def _get_cache_key(self, content):
+        """Generate cache key from content"""
+        return hashlib.md5(str(content).encode()).hexdigest()
+    
+    def _get_from_cache(self, cache_key):
+        """Get cached result if available"""
+        return self._cache.get(cache_key)
+    
+    def _save_to_cache(self, cache_key, result):
+        """Save result to cache"""
+        if len(self._cache) >= self._max_cache_size:
+            # Remove oldest entry
+            oldest_key = next(iter(self._cache))
+            del self._cache[oldest_key]
+        self._cache[cache_key] = result
+
     def analyze_architecture(self, extracted_content: Dict[str, Any]) -> Dict[str, Any]:
         """
         Analyze the extracted architecture diagram content
         """
+        # Check cache first
+        cache_key = self._get_cache_key(extracted_content)
+        cached_result = self._get_from_cache(cache_key)
+        if cached_result:
+            print("📋 Architecture Analyzer: Using cached result")
+            return cached_result
+        
         try:
             # Prepare the prompt for OpenAI
             analysis_prompt = self._create_analysis_prompt(extracted_content)
@@ -62,6 +90,9 @@ class ArchitectureAnalyzer:
             
             # Parse the response
             analysis_result = self._parse_analysis_response(response.choices[0].message.content)
+            
+            # Save to cache
+            self._save_to_cache(cache_key, analysis_result)
             
             return analysis_result
             

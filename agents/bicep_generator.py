@@ -8,6 +8,7 @@ import os
 from typing import Dict, List, Any
 import openai
 from dotenv import load_dotenv
+import hashlib
 
 load_dotenv()
 
@@ -37,11 +38,22 @@ class BicepGenerator:
         
         # Load Bicep templates
         self.bicep_templates = self._load_bicep_templates()
+        
+        # Template cache for faster generation
+        self._template_cache = {}
+        self._max_cache_size = 30
     
     def generate_bicep_templates(self, architecture_analysis: Dict[str, Any], policy_compliance: Dict[str, Any], environment: str = 'dev') -> Dict[str, Any]:
         """
-        Generate Bicep templates and YAML pipelines based on analysis and compliance
+        Generate Bicep templates with caching
         """
+        # Check cache first
+        cache_key = self._get_cache_key(architecture_analysis, policy_compliance, environment)
+        cached_result = self._get_from_cache(cache_key)
+        if cached_result:
+            print("🏗️ Bicep Generator: Using cached templates")
+            return cached_result
+        
         try:
             # Create generation prompt
             generation_prompt = self._create_generation_prompt(
@@ -73,6 +85,9 @@ class BicepGenerator:
                 policy_compliance,
                 environment
             )
+            
+            # Save to cache
+            self._save_to_cache(cache_key, generation_result)
             
             return generation_result
             
@@ -258,73 +273,33 @@ az group delete --name your-rg-name --yes --no-wait
         return guide
     
     def _create_generation_prompt(self, analysis: Dict[str, Any], compliance: Dict[str, Any], environment: str) -> str:
-        """Create Bicep generation prompt"""
+        """Create concise Bicep generation prompt for faster processing"""
         
         # Get environment-specific requirements
         env_requirements = self._get_environment_requirements(environment)
         
-        prompt = f"""
-        Please generate complete Azure Bicep templates and a single Azure DevOps YAML pipeline based on the following:
-        
-        Target Environment: {environment.upper()}
-        Environment Requirements: {json.dumps(env_requirements, indent=2)}
-        
-        Architecture Analysis:
-        {json.dumps(analysis, indent=2)}
-        
-        Policy Compliance Results:
-        {json.dumps(compliance, indent=2)}
-        
-        Please provide the response in the following JSON structure:
-        {{
-            "bicep_templates": {{
-                "main.bicep": "main bicep template content",
-                "modules/": {{
-                    "network.bicep": "network module content",
-                    "compute.bicep": "compute module content",
-                    "storage.bicep": "storage module content",
-                    "security.bicep": "security module content"
-                }},
-                "parameters/": {{
-                    "{environment}.parameters.json": "environment-specific parameters"
-                }}
-            }},
-            "yaml_pipelines": {{
-                "azure-pipelines-{environment}.yml": "single environment-specific pipeline content"
-            }},
-            "documentation": {{
-                "README.md": "comprehensive documentation for {environment}",
-                "DEPLOYMENT.md": "deployment instructions for {environment}"
-            }},
-            "scripts": {{
-                "deploy-{environment}.ps1": "PowerShell deployment script for {environment}"
-            }}
-        }}
-        
-        Requirements:
-        1. Generate production-ready Bicep templates with proper parameterization for {environment}
-        2. Include security best practices from compliance analysis
-        3. Create modular Bicep templates for maintainability
-        4. Generate ONLY ONE Azure DevOps YAML pipeline optimized for {environment}
-        5. Include parameter file ONLY for {environment}
-        6. Add comprehensive documentation specific to {environment}
-        7. Include validation and deployment scripts for {environment}
-        8. Follow Azure Well-Architected Framework principles
-        9. Implement all compliance recommendations where possible
-        10. Use latest Azure resource API versions
-        
-        Environment-Specific Guidelines:
-        - For DEVELOPMENT: Simple pipeline with basic validation, lower SKUs, relaxed policies
-        - For PRODUCTION: Multi-stage pipeline with approvals, security scans, high-availability SKUs, strict governance
-        
-        Focus on:
-        - Infrastructure as Code best practices
-        - Security and compliance requirements
-        - Scalability and maintainability
-        - Cost optimization
-        - Monitoring and logging
-        - Disaster recovery considerations
-        """
+        prompt = f"""Generate Azure Bicep templates and DevOps pipeline for {environment.upper()}.
+
+Environment: {environment}
+Requirements: {json.dumps(env_requirements, indent=1)}
+
+Architecture: {json.dumps(analysis, indent=1)}
+
+Return JSON:
+{{
+    "bicep_templates": {{
+        "main.bicep": "template content",
+        "parameters/": {{"{environment}.parameters.json": "params"}}
+    }},
+    "yaml_pipelines": {{
+        "azure-pipelines-{environment}.yml": "pipeline content"
+    }},
+    "scripts": {{
+        "deploy-{environment}.ps1": "deploy script"
+    }}
+}}
+
+Make it {env_requirements.get('pipeline_complexity', 'simple')} for {environment}."""
         
         return prompt
     
@@ -788,3 +763,19 @@ Write-Host "🎉 Infrastructure deployment for {environment.upper()} completed!"
         }
         
         return requirements.get(environment.lower(), requirements['development'])
+    
+    def _get_cache_key(self, architecture_analysis, policy_compliance, environment):
+        """Generate cache key"""
+        key_data = f"{str(architecture_analysis)}{str(policy_compliance)}{environment}"
+        return hashlib.md5(key_data.encode()).hexdigest()
+    
+    def _get_from_cache(self, cache_key):
+        """Get cached templates if available"""
+        return self._template_cache.get(cache_key)
+    
+    def _save_to_cache(self, cache_key, result):
+        """Save templates to cache"""
+        if len(self._template_cache) >= self._max_cache_size:
+            oldest_key = next(iter(self._template_cache))
+            del self._template_cache[oldest_key]
+        self._template_cache[cache_key] = result

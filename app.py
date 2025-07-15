@@ -8,17 +8,50 @@ from agents.policy_checker import PolicyChecker
 from agents.bicep_generator import BicepGenerator
 from utils.file_processor import FileProcessor
 from utils.zip_generator import ZipGenerator
+from utils.performance import perf_monitor
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = config.SECRET_KEY
-app.config['UPLOAD_FOLDER'] = config.UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = config.MAX_CONTENT_LENGTH
+app.config.from_object(config)
 
-# Allowed file extensions
-ALLOWED_EXTENSIONS = config.ALLOWED_EXTENSIONS
+# Singleton instances for performance (lazy loading)
+_arch_analyzer = None
+_policy_checker = None
+_bicep_generator = None
+_file_processor = None
+_zip_generator = None
+
+def get_arch_analyzer():
+    global _arch_analyzer
+    if _arch_analyzer is None:
+        _arch_analyzer = ArchitectureAnalyzer()
+    return _arch_analyzer
+
+def get_policy_checker():
+    global _policy_checker
+    if _policy_checker is None:
+        _policy_checker = PolicyChecker()
+    return _policy_checker
+
+def get_bicep_generator():
+    global _bicep_generator
+    if _bicep_generator is None:
+        _bicep_generator = BicepGenerator()
+    return _bicep_generator
+
+def get_file_processor():
+    global _file_processor
+    if _file_processor is None:
+        _file_processor = FileProcessor()
+    return _file_processor
+
+def get_zip_generator():
+    global _zip_generator
+    if _zip_generator is None:
+        _zip_generator = ZipGenerator()
+    return _zip_generator
 
 def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in config.ALLOWED_EXTENSIONS
 
 @app.route('/')
 def index():
@@ -26,84 +59,65 @@ def index():
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    if 'file' not in request.files:
-        flash('No file selected')
-        return redirect(request.url)
+    if 'file' not in request.files or request.files['file'].filename == '':
+        return jsonify({'success': False, 'message': 'No file selected'})
     
     file = request.files['file']
     environment = request.form.get('environment', 'development')
     
-    if file.filename == '':
-        flash('No file selected')
-        return redirect(request.url)
+    if not allowed_file(file.filename):
+        return jsonify({'success': False, 'message': 'Invalid file type'})
     
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"{timestamp}_{filename}"
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
-        
-        # Process the file through the AI agents
-        try:
-            result = process_architecture_diagram(filepath, environment)
-            return jsonify({
-                'success': True,
-                'message': 'File processed successfully',
-                'download_url': url_for('download_result', filename=result['zip_filename'])
-            })
-        except Exception as e:
-            return jsonify({
-                'success': False,
-                'message': f'Error processing file: {str(e)}'
-            })
+    # Save file with timestamp
+    filename = secure_filename(file.filename)
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    filename = f"{timestamp}_{filename}"
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(filepath)
     
-    return jsonify({
-        'success': False,
-        'message': 'Invalid file type. Please upload PNG, JPG, PDF, XML, Draw.io, VSDX, or SVG files.'
-    })
+    try:
+        # Process through unified agent (faster single call)
+        zip_filename = process_architecture_diagram(filepath, environment)
+        return jsonify({
+            'success': True,
+            'message': 'File processed successfully',
+            'download_url': url_for('download_result', filename=zip_filename)
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'})
 
+@perf_monitor.time_function("process_architecture_diagram")
 def process_architecture_diagram(filepath, environment):
-    """Process the architecture diagram through the 3 AI agents"""
-    
-    # Initialize the AI agents
-    arch_analyzer = ArchitectureAnalyzer()
-    policy_checker = PolicyChecker()
-    bicep_generator = BicepGenerator()
-    
-    # Initialize file processor
-    file_processor = FileProcessor()
-    
-    # Step 1: Extract content from the uploaded file
-    extracted_content = file_processor.process_file(filepath)
-    
-    # Step 2: Analyze architecture with Agent 1
-    architecture_analysis = arch_analyzer.analyze_architecture(extracted_content)
-    
-    # Step 3: Check policy compliance with Agent 2
-    policy_compliance = policy_checker.check_compliance(architecture_analysis, environment)
-    
-    # Step 4: Generate bicep templates and YAML pipelines with Agent 3
-    bicep_templates = bicep_generator.generate_bicep_templates(
-        architecture_analysis, 
-        policy_compliance,
-        environment
-    )
-    
-    # Step 5: Create ZIP file with all generated content
-    zip_generator = ZipGenerator()
-    zip_filename = zip_generator.create_zip_package(
-        bicep_templates,
-        architecture_analysis,
-        policy_compliance,
-        environment
-    )
-    
-    return {
-        'zip_filename': zip_filename,
-        'architecture_analysis': architecture_analysis,
-        'policy_compliance': policy_compliance
-    }
+    """Optimized processing through 3 agents with caching and performance monitoring"""
+    try:
+        # Step 1: Extract content from the uploaded file (cached)
+        content = get_file_processor().process_file(filepath)
+        
+        # Step 2: Analyze architecture with Agent 1
+        architecture_analysis = get_arch_analyzer().analyze_architecture(content)
+        
+        # Step 3: Check policy compliance with Agent 2
+        policy_compliance = get_policy_checker().check_compliance(architecture_analysis, environment)
+        
+        # Step 4: Generate bicep templates and YAML pipelines with Agent 3
+        bicep_templates = get_bicep_generator().generate_bicep_templates(
+            architecture_analysis, 
+            policy_compliance,
+            environment
+        )
+        
+        # Step 5: Create ZIP file with all generated content
+        zip_filename = get_zip_generator().create_zip_package(
+            bicep_templates,
+            architecture_analysis,
+            policy_compliance,
+            environment
+        )
+        
+        return zip_filename
+        
+    except Exception as e:
+        raise Exception(f"Processing failed: {str(e)}")
 
 @app.route('/download/<filename>')
 def download_result(filename):
@@ -175,6 +189,11 @@ def list_samples():
 @app.route('/health')
 def health_check():
     return jsonify({'status': 'healthy'})
+
+@app.route('/performance')
+def performance_stats():
+    """Get performance statistics"""
+    return jsonify(perf_monitor.get_stats())
 
 if __name__ == '__main__':
     app.run(debug=config.DEBUG, host='0.0.0.0', port=5000)

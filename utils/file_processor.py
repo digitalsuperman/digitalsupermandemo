@@ -10,6 +10,7 @@ from PIL import Image
 import PyPDF2
 import zipfile
 import tempfile
+import hashlib
 
 class FileProcessor:
     def __init__(self):
@@ -23,7 +24,27 @@ class FileProcessor:
             '.vsdx': self._process_vsdx,
             '.svg': self._process_svg
         }
+        
+        # File content cache
+        self._file_cache = {}
+        self._max_cache_size = 20
     
+    def _get_file_cache_key(self, filepath):
+        """Generate cache key based on file path and modification time"""
+        stat = os.stat(filepath)
+        return hashlib.md5(f"{filepath}{stat.st_mtime}{stat.st_size}".encode()).hexdigest()
+    
+    def _get_from_cache(self, cache_key):
+        """Get cached file content"""
+        return self._file_cache.get(cache_key)
+    
+    def _save_to_cache(self, cache_key, content):
+        """Save file content to cache"""
+        if len(self._file_cache) >= self._max_cache_size:
+            oldest_key = next(iter(self._file_cache))
+            del self._file_cache[oldest_key]
+        self._file_cache[cache_key] = content
+
     def process_file(self, filepath: str) -> Dict[str, Any]:
         """Process uploaded file and extract relevant content"""
         try:
@@ -37,6 +58,13 @@ class FileProcessor:
                     'metadata': {}
                 }
             
+            # Check cache first
+            cache_key = self._get_file_cache_key(filepath)
+            cached_content = self._get_from_cache(cache_key)
+            if cached_content:
+                print(f"📁 File Processor: Using cached content for {os.path.basename(filepath)}")
+                return cached_content
+            
             # Process file based on extension
             processor = self.supported_formats[file_extension]
             result = processor(filepath)
@@ -48,6 +76,9 @@ class FileProcessor:
                 'file_extension': file_extension,
                 'processed_timestamp': self._get_timestamp()
             })
+            
+            # Save to cache
+            self._save_to_cache(cache_key, result)
             
             return result
             
