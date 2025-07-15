@@ -77,11 +77,30 @@ def upload_file():
     
     try:
         # Process through unified agent (faster single call)
-        zip_filename = process_architecture_diagram(filepath, environment)
+        result = process_architecture_diagram(filepath, environment)
+        
+        # Check if there was a validation error
+        if isinstance(result, dict) and result.get('error'):
+            error_type = result.get('error_type')
+            if error_type == 'non_azure_architecture':
+                return jsonify({
+                    'success': False,
+                    'error_type': 'non_azure_architecture',
+                    'message': result.get('message', 'We only support Azure architecture diagrams.'),
+                    'detected_platforms': result.get('detected_platforms', []),
+                    'suggestion': result.get('suggestion', 'Please upload an Azure-specific architecture diagram.')
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': result.get('message', 'An error occurred during processing.')
+                })
+        
+        # Normal successful processing
         return jsonify({
             'success': True,
             'message': 'File processed successfully',
-            'download_url': url_for('download_result', filename=zip_filename)
+            'download_url': url_for('download_result', filename=result)
         })
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error: {str(e)}'})
@@ -95,6 +114,16 @@ def process_architecture_diagram(filepath, environment):
         
         # Step 2: Analyze architecture with Agent 1
         architecture_analysis = get_arch_analyzer().analyze_architecture(content)
+        
+        # Check if architecture validation failed (non-Azure resources detected)
+        if architecture_analysis.get('error') == 'non_azure_architecture':
+            return {
+                'error': 'non_azure_architecture',
+                'error_type': 'non_azure_architecture',
+                'message': architecture_analysis.get('error_message', 'We only support Azure architecture diagrams.'),
+                'detected_platforms': architecture_analysis.get('detected_platforms', []),
+                'suggestion': architecture_analysis.get('suggestion', 'Please upload an Azure-specific architecture diagram.')
+            }
         
         # Step 3: Check policy compliance with Agent 2
         policy_compliance = get_policy_checker().check_compliance(architecture_analysis, environment)

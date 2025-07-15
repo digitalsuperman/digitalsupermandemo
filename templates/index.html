@@ -748,6 +748,8 @@
             })
             .then(response => response.json())
             .then(data => {
+                console.log('Upload response:', data); // Debug log
+                
                 if (data.success) {
                     // Simulate realistic processing times
                     setTimeout(() => {
@@ -765,7 +767,15 @@
                         }, 3000); // Agent 2: 3 seconds
                     }, 3000); // Agent 1: 3 seconds
                 } else {
-                    alert('Error: ' + (data.message || 'Unknown error occurred'));
+                    console.log('Upload failed, error type:', data.error_type); // Debug log
+                    
+                    // Handle specific error types
+                    if (data.error_type === 'non_azure_architecture') {
+                        console.log('Showing Azure validation error'); // Debug log
+                        showAzureValidationError(data);
+                    } else {
+                        alert('Error: ' + (data.message || 'Unknown error occurred'));
+                    }
                     resetToUploadState();
                 }
             })
@@ -828,12 +838,72 @@
         function resetToUploadState() {
             uploadBtnContainer.style.display = 'block';
             progressCard.style.display = 'none';
+            
+            // Remove any existing error alerts
+            const errorAlert = document.getElementById('azureValidationError');
+            if (errorAlert) {
+                errorAlert.remove();
+            }
         }
 
         function showResults(downloadUrl) {
             progressCard.style.display = 'none';
             resultCard.style.display = 'block';
             document.getElementById('downloadLink').href = downloadUrl;
+        }
+
+        function showAzureValidationError(data) {
+            console.log('showAzureValidationError called with:', data); // Debug log
+            
+            progressCard.style.display = 'none';
+            
+            const uploadSection = document.getElementById('upload');
+            
+            // Create or update error alert
+            let errorAlert = document.getElementById('azureValidationError');
+            if (!errorAlert) {
+                errorAlert = document.createElement('div');
+                errorAlert.id = 'azureValidationError';
+                errorAlert.className = 'alert alert-warning alert-dismissible fade show mb-4';
+                uploadSection.insertBefore(errorAlert, uploadSection.firstChild);
+            }
+            
+            let detectedPlatforms = '';
+            if (data.detected_platforms && data.detected_platforms.length > 0) {
+                detectedPlatforms = `
+                    <p><strong>Detected Platforms:</strong> ${data.detected_platforms.join(', ')}</p>
+                `;
+            }
+            
+            let imageNote = '';
+            if (data.suggestion && data.suggestion.includes('Draw.io')) {
+                imageNote = `
+                    <div class="alert alert-info mt-2">
+                        <small><strong>💡 Tip for Image Files:</strong> For better validation accuracy, consider using text-based formats like Draw.io (.drawio), SVG, or XML instead of image files.</small>
+                    </div>
+                `;
+            }
+            
+            errorAlert.innerHTML = `
+                <h4 class="alert-heading">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Azure Resources Only
+                </h4>
+                <p>${data.message}</p>
+                ${detectedPlatforms}
+                <hr>
+                <p class="mb-0">
+                    <strong>Suggestions:</strong>
+                    <br>• Please upload an Azure-specific architecture diagram
+                    <br>• Ensure your diagram contains Azure services and resources
+                    <br>• Remove or replace non-Azure cloud components
+                </p>
+                ${imageNote}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            // Scroll to error
+            errorAlert.scrollIntoView({ behavior: 'smooth' });
         }
 
         // Smooth scrolling
