@@ -1,0 +1,84 @@
+# Sample Azure Web Application Architecture
+
+## Overview
+This is a sample 3-tier web application architecture deployed on Microsoft Azure, designed for high availability, scalability, and security.
+
+## Architecture Components
+
+### Network Layer
+- **Virtual Network**: Main container (10.0.0.0/16)
+  - Web Subnet: 10.0.1.0/24 (hosts application services)
+  - Database Subnet: 10.0.2.0/24 (hosts database services)
+
+### Frontend & Load Balancing
+- **Azure Front Door**: Global load balancer and CDN
+  - Provides SSL termination
+  - Global traffic routing
+  - DDoS protection
+- **Application Gateway**: Regional load balancer
+  - Web Application Firewall (WAF)
+  - SSL offloading
+  - Path-based routing
+
+### Compute Layer
+- **App Service**: 
+  - Platform-as-a-Service (PaaS)
+  - Auto-scaling capabilities
+  - Deployment slots for blue-green deployments
+  - Managed runtime environment
+
+### Data Layer
+- **Azure SQL Database**:
+  - Managed SQL database service
+  - Automatic backups and point-in-time restore
+  - High availability with 99.99% SLA
+  - Advanced security features
+
+### Storage & Security
+- **Storage Account**:
+  - Blob storage for static content
+  - File shares for application data
+  - Queue storage for async processing
+- **Key Vault**:
+  - Centralized secrets management
+  - Certificate management
+  - Encryption key management
+
+### Monitoring & Observability
+- **Application Insights**:
+  - Application performance monitoring (APM)
+  - Real-time telemetry
+  - Custom dashboards and alerts
+- **Log Analytics Workspace**:
+  - Centralized logging
+  - Log queries and analysis
+  - Integration with Azure Monitor
+
+## Data Flow
+1. User requests → Azure Front Door → Application Gateway
+2. Application Gateway → App Service (in Web Subnet)
+3. App Service → SQL Database (in Database Subnet)
+4. App Service → Storage Account (for static content)
+5. App Service → Key Vault (for secrets/certificates)
+6. All services → Application Insights (telemetry)
+7. All services → Log Analytics (logs)
+
+## Security Features
+- Network Security Groups (NSGs) on subnets
+- Azure Active Directory integration
+- SSL/TLS encryption in transit
+- Data encryption at rest
+- Private endpoints for database connectivity
+- Managed identities for service-to-service authentication
+
+## Scalability Features
+- Auto-scaling for App Service
+- Azure SQL Database elastic pools
+- CDN for global content distribution
+- Load balancing across multiple instances
+
+## Compliance & Governance
+- Azure Policy for governance
+- Resource tagging for cost management
+- RBAC for access control
+- Azure Security Center recommendations

@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Superman - Azure Architecture to Infrastructure Code</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #fafafa;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 120px 0;
+            text-align: center;
+        }
+
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        .hero-subtitle {
+            font-size: 1.25rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto 2rem auto;
+        }
+
+        .section {
+            padding: 80px 0;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 3rem;
+            color: #2d3748;
+        }
+
+        .feature-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            border: none;
+            height: 100%;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            color: white;
+            font-size: 2rem;
+        }
+
+        .upload-section {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin: 2rem 0;
+        }
+
+        .upload-area {
+            border: 3px dashed #d1d5db;
+            border-radius: 16px;
+            padding: 4rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f9fafb;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #e0e7ff;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 12px;
+            padding: 14px 28px;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(102, 126, 234, 0.4);
+        }
+
+        .step-number {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin: 0 auto 1.5rem auto;
+        }
+
+        .progress-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-top: 2rem;
+            display: none;
+        }
+
+        .agent-status {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 12px;
+            background: #f9fafb;
+        }
+
+        .agent-status i {
+            margin-right: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .processing {
+            color: #f59e0b;
+        }
+
+        .completed {
+            color: #10b981;
+        }
+
+        .footer {
+            background: #2d3748;
+            color: white;
+            padding: 3rem 0;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+            
+            .section-title {
+                font-size: 2rem;
+            }
+            
+            .upload-area {
+                padding: 2rem 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container">
+            <h1 class="hero-title">Digital Superman</h1>
+            <p class="hero-subtitle">Transform your Azure architecture diagrams into production-ready infrastructure code using AI-powered agents</p>
+            <a href="#upload" class="btn btn-primary btn-lg">Get Started</a>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="section">
+        <div class="container">
+            <h2 class="section-title">Three AI Agents Working for You</h2>
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <h5 class="fw-bold mb-3">Architecture Analysis</h5>
+                        <p class="text-muted">AI Agent 1 analyzes your architecture diagrams to identify Azure components, relationships, and configurations with precision.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <h5 class="fw-bold mb-3">Policy Compliance</h5>
+                        <p class="text-muted">AI Agent 2 validates your architecture against Microsoft Azure policies for security, governance, and best practices.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-code"></i>
+                        </div>
+                        <h5 class="fw-bold mb-3">Code Generation</h5>
+                        <p class="text-muted">AI Agent 3 generates production-ready Bicep templates and Azure DevOps YAML pipelines for seamless deployment.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="section" style="background: #f8f9fa;">
+        <div class="container">
+            <h2 class="section-title">How It Works</h2>
+            <div class="row g-4">
+                <div class="col-md-3 text-center">
+                    <div class="step-number">1</div>
+                    <h6 class="fw-bold mb-2">Upload Diagram</h6>
+                    <p class="text-muted">Support for PNG, JPG, PDF, XML, Draw.io, VSDX, and SVG formats</p>
+                </div>
+                <div class="col-md-3 text-center">
+                    <div class="step-number">2</div>
+                    <h6 class="fw-bold mb-2">AI Analysis</h6>
+                    <p class="text-muted">Three AI agents process your diagram for components and compliance</p>
+                </div>
+                <div class="col-md-3 text-center">
+                    <div class="step-number">3</div>
+                    <h6 class="fw-bold mb-2">Generate Code</h6>
+                    <p class="text-muted">Create Bicep templates, pipelines, and documentation</p>
+                </div>
+                <div class="col-md-3 text-center">
+                    <div class="step-number">4</div>
+                    <h6 class="fw-bold mb-2">Download</h6>
+                    <p class="text-muted">Get a complete ZIP package with all generated files</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Upload Section -->
+    <section id="upload" class="section">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="upload-section">
+                        <h2 class="text-center mb-4">Upload Your Architecture Diagram</h2>
+                        
+                        <form id="uploadForm" enctype="multipart/form-data">
+                            <div class="mb-4">
+                                <label class="form-label fw-bold">Select Environment</label>
+                                <select class="form-select" id="environment" name="environment" required>
+                                    <option value="">Choose environment...</option>
+                                    <option value="development">Development</option>
+                                    <option value="production">Production</option>
+                                </select>
+                            </div>
+                            
+                            <div class="upload-area" id="uploadArea">
+                                <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                                <h5 class="mb-3">Drag & Drop your file here</h5>
+                                <p class="text-muted mb-3">or click to browse</p>
+                                <input type="file" id="fileInput" name="file" accept=".png,.jpg,.jpeg,.pdf,.xml,.drawio,.vsdx,.svg" style="display: none;">
+                                <div class="small text-muted">
+                                    <strong>Supported formats:</strong> PNG, JPG, PDF, XML, Draw.io, VSDX, SVG<br>
+                                    <strong>Maximum file size:</strong> 16MB
+                                </div>
+                            </div>
+                        </form>
+
+                        <!-- Progress Section -->
+                        <div class="progress-card" id="progressCard">
+                            <h6 class="fw-bold mb-3">Processing Status</h6>
+                            <div class="agent-status" id="agent1Status">
+                                <i class="fas fa-spinner fa-spin processing"></i>
+                                <span>Architecture Analysis Agent - Processing...</span>
+                            </div>
+                            <div class="agent-status" id="agent2Status">
+                                <i class="fas fa-clock text-muted"></i>
+                                <span>Policy Checker Agent - Waiting...</span>
+                            </div>
+                            <div class="agent-status" id="agent3Status">
+                                <i class="fas fa-clock text-muted"></i>
+                                <span>Bicep Generator Agent - Waiting...</span>
+                            </div>
+                        </div>
+
+                        <!-- Results Section -->
+                        <div class="progress-card" id="resultCard">
+                            <div class="text-center">
+                                <i class="fas fa-check-circle text-success mb-3" style="font-size: 3rem;"></i>
+                                <h5 class="fw-bold mb-3">Processing Complete!</h5>
+                                <p class="text-muted mb-4">Your Azure infrastructure code package is ready for download.</p>
+                                <a href="#" id="downloadLink" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-download me-2"></i>Download Package
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Digital Superman. Transforming Azure architecture with AI.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // File upload functionality
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadForm = document.getElementById('uploadForm');
+        const progressCard = document.getElementById('progressCard');
+        const resultCard = document.getElementById('resultCard');
+
+        // Click to upload
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                handleFileUpload(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+
+        function handleFileUpload(file) {
+            const environment = document.getElementById('environment').value;
+            if (!environment) {
+                alert('Please select an environment first.');
+                return;
+            }
+
+            // Show progress
+            progressCard.style.display = 'block';
+            resultCard.style.display = 'none';
+
+            // Create form data
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('environment', environment);
+
+            // Upload file
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update progress
+                    updateAgentStatus('agent1Status', 'completed', 'Architecture Analysis Agent - Complete');
+                    setTimeout(() => {
+                        updateAgentStatus('agent2Status', 'processing', 'Policy Checker Agent - Processing...');
+                        setTimeout(() => {
+                            updateAgentStatus('agent2Status', 'completed', 'Policy Checker Agent - Complete');
+                            updateAgentStatus('agent3Status', 'processing', 'Bicep Generator Agent - Processing...');
+                            setTimeout(() => {
+                                updateAgentStatus('agent3Status', 'completed', 'Bicep Generator Agent - Complete');
+                                showResults(data.download_url);
+                            }, 3000);
+                        }, 2000);
+                    }, 2000);
+                } else {
+                    alert('Error: ' + data.error);
+                    progressCard.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred during upload.');
+                progressCard.style.display = 'none';
+            });
+        }
+
+        function updateAgentStatus(elementId, status, text) {
+            const element = document.getElementById(elementId);
+            const icon = element.querySelector('i');
+            const span = element.querySelector('span');
+            
+            icon.className = status === 'processing' ? 'fas fa-spinner fa-spin processing' : 'fas fa-check-circle completed';
+            span.textContent = text;
+        }
+
+        function showResults(downloadUrl) {
+            progressCard.style.display = 'none';
+            resultCard.style.display = 'block';
+            document.getElementById('downloadLink').href = downloadUrl;
+        }
+
+        // Smooth scrolling
+        document.querySelector('a[href="#upload"]').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('upload').scrollIntoView({ behavior: 'smooth' });
+        });
+    </script>
+</body>
+</html>

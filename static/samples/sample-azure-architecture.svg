@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .title { font-family: Arial, sans-serif; font-size: 20px; font-weight: bold; }
+      .label { font-family: Arial, sans-serif; font-size: 12px; }
+      .small-label { font-family: Arial, sans-serif; font-size: 10px; }
+      .azure-blue { fill: #0078d4; }
+      .azure-light { fill: #e3f2fd; stroke: #0078d4; stroke-width: 2; }
+      .resource { fill: #fff; stroke: #0078d4; stroke-width: 2; }
+      .connection { stroke: #666; stroke-width: 2; fill: none; }
+    </style>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="800" height="600" fill="#f8f9fa"/>
+  
+  <!-- Title -->
+  <text x="400" y="30" class="title azure-blue" text-anchor="middle">Sample Azure Web Application Architecture</text>
+  
+  <!-- Internet Cloud -->
+  <ellipse cx="400" cy="80" rx="60" ry="25" class="azure-light"/>
+  <text x="400" y="85" class="label" text-anchor="middle">Internet</text>
+  
+  <!-- Azure Front Door -->
+  <rect x="350" y="130" width="100" height="40" class="resource"/>
+  <text x="400" y="155" class="label" text-anchor="middle">Azure Front Door</text>
+  
+  <!-- Application Gateway -->
+  <rect x="320" y="200" width="160" height="40" class="resource"/>
+  <text x="400" y="225" class="label" text-anchor="middle">Application Gateway</text>
+  
+  <!-- Virtual Network -->
+  <rect x="250" y="270" width="300" height="250" class="azure-light" rx="10"/>
+  <text x="260" y="290" class="small-label">Virtual Network (10.0.0.0/16)</text>
+  
+  <!-- Web App Subnet -->
+  <rect x="270" y="310" width="120" height="80" class="resource" rx="5"/>
+  <text x="330" y="330" class="small-label" text-anchor="middle">Web Subnet</text>
+  <text x="330" y="345" class="small-label" text-anchor="middle">(10.0.1.0/24)</text>
+  
+  <!-- App Service -->
+  <rect x="280" y="355" width="100" height="25" fill="#0078d4"/>
+  <text x="330" y="370" class="small-label" fill="white" text-anchor="middle">App Service</text>
+  
+  <!-- Database Subnet -->
+  <rect x="410" y="310" width="120" height="80" class="resource" rx="5"/>
+  <text x="470" y="330" class="small-label" text-anchor="middle">DB Subnet</text>
+  <text x="470" y="345" class="small-label" text-anchor="middle">(10.0.2.0/24)</text>
+  
+  <!-- SQL Database -->
+  <rect x="420" y="355" width="100" height="25" fill="#0078d4"/>
+  <text x="470" y="370" class="small-label" fill="white" text-anchor="middle">SQL Database</text>
+  
+  <!-- Storage Account -->
+  <rect x="270" y="420" width="120" height="40" class="resource"/>
+  <text x="330" y="445" class="label" text-anchor="middle">Storage Account</text>
+  
+  <!-- Key Vault -->
+  <rect x="410" y="420" width="120" height="40" class="resource"/>
+  <text x="470" y="445" class="label" text-anchor="middle">Key Vault</text>
+  
+  <!-- Application Insights -->
+  <rect x="580" y="350" width="120" height="40" class="resource"/>
+  <text x="640" y="375" class="label" text-anchor="middle">App Insights</text>
+  
+  <!-- Log Analytics -->
+  <rect x="580" y="410" width="120" height="40" class="resource"/>
+  <text x="640" y="435" class="label" text-anchor="middle">Log Analytics</text>
+  
+  <!-- Connections -->
+  <line x1="400" y1="105" x2="400" y2="130" class="connection" marker-end="url(#arrowhead)"/>
+  <line x1="400" y1="170" x2="400" y2="200" class="connection" marker-end="url(#arrowhead)"/>
+  <line x1="400" y1="240" x2="400" y2="270" class="connection" marker-end="url(#arrowhead)"/>
+  <line x1="380" y1="355" x2="420" y2="355" class="connection" marker-end="url(#arrowhead)"/>
+  <line x1="390" y1="355" x2="580" y2="370" class="connection" marker-end="url(#arrowhead)"/>
+  <line x1="470" y1="380" x2="580" y2="430" class="connection" marker-end="url(#arrowhead)"/>
+  
+  <!-- Arrow marker -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#666"/>
+    </marker>
+  </defs>
+  
+  <!-- Legend -->
+  <rect x="20" y="480" width="200" height="100" fill="white" stroke="#ccc" stroke-width="1"/>
+  <text x="30" y="500" class="label" font-weight="bold">Legend:</text>
+  <rect x="30" y="510" width="15" height="15" class="resource"/>
+  <text x="50" y="522" class="small-label">Azure Resources</text>
+  <rect x="30" y="530" width="15" height="15" class="azure-light"/>
+  <text x="50" y="542" class="small-label">Network/Container</text>
+  <line x1="30" y1="555" x2="45" y2="555" class="connection"/>
+  <text x="50" y="559" class="small-label">Data Flow</text>
+</svg>
