@@ -28,13 +28,13 @@ class ZipGenerator:
         try:
             with zipfile.ZipFile(zip_filepath, 'w', zipfile.ZIP_DEFLATED) as zipf:
                 # Add Bicep templates
-                self._add_bicep_templates(zipf, bicep_templates)
+                self._add_bicep_templates(zipf, bicep_templates, environment)
                 
                 # Add YAML pipelines
-                self._add_yaml_pipelines(zipf, bicep_templates)
+                self._add_yaml_pipelines(zipf, bicep_templates, environment)
                 
                 # Add scripts
-                self._add_scripts(zipf, bicep_templates)
+                self._add_scripts(zipf, bicep_templates, environment)
                 
                 # Add simplified documentation (only 2 files)
                 self._add_simplified_documentation(zipf, policy_compliance, environment)
@@ -44,7 +44,7 @@ class ZipGenerator:
         except Exception as e:
             raise Exception(f"Failed to create ZIP package: {str(e)}")
     
-    def _add_bicep_templates(self, zipf: zipfile.ZipFile, templates: Dict[str, Any]):
+    def _add_bicep_templates(self, zipf: zipfile.ZipFile, templates: Dict[str, Any], environment: str):
         """Add Bicep templates to ZIP"""
         bicep_templates = templates.get('bicep_templates', {})
         
@@ -66,28 +66,27 @@ class ZipGenerator:
         for module_name, module_content in modules.items():
             zipf.writestr(f"bicep/modules/{module_name}", module_content)
         
-        # Handle parameters directory
+        # Handle parameters directory - only include environment-specific parameters
         parameters = bicep_templates.get('parameters/', {})
         for param_name, param_content in parameters.items():
-            zipf.writestr(f"bicep/parameters/{param_name}", param_content)
+            # Only include parameters for the target environment
+            if environment in param_name or not any(env in param_name for env in ['dev', 'staging', 'prod']):
+                zipf.writestr(f"bicep/parameters/{param_name}", param_content)
     
-    def _add_yaml_pipelines(self, zipf: zipfile.ZipFile, templates: Dict[str, Any]):
-        """Add YAML pipelines to ZIP"""
+    def _add_yaml_pipelines(self, zipf: zipfile.ZipFile, templates: Dict[str, Any], environment: str):
+        """Add environment-specific YAML pipelines to ZIP"""
         yaml_pipelines = templates.get('yaml_pipelines', {})
         
         for pipeline_name, pipeline_content in yaml_pipelines.items():
-            if isinstance(pipeline_content, dict):
-                # Handle nested structure like pipelines/
-                for sub_name, sub_content in pipeline_content.items():
-                    if isinstance(sub_content, str):
-                        zipf.writestr(f"pipelines/{pipeline_name}/{sub_name}", sub_content)
-            else:
-                zipf.writestr(f"pipelines/{pipeline_name}", pipeline_content)
-        
-        # Handle pipelines directory
-        pipelines_dir = yaml_pipelines.get('pipelines/', {})
-        for pipeline_name, pipeline_content in pipelines_dir.items():
-            zipf.writestr(f"pipelines/{pipeline_name}", pipeline_content)
+            # Only include pipelines that match the target environment or are generic
+            if environment in pipeline_name or 'azure-pipelines.' in pipeline_name:
+                if isinstance(pipeline_content, dict):
+                    # Handle nested structure like pipelines/
+                    for sub_name, sub_content in pipeline_content.items():
+                        if isinstance(sub_content, str) and (environment in sub_name or 'main' in sub_name):
+                            zipf.writestr(f"pipelines/{sub_name}", sub_content)
+                else:
+                    zipf.writestr(f"pipelines/{pipeline_name}", pipeline_content)
     
     def _add_simplified_documentation(self, zipf: zipfile.ZipFile, compliance: Dict[str, Any], environment: str):
         """Add only essential documentation - Policy Compliance Report and README"""
@@ -306,19 +305,14 @@ Edit parameter files for your environment:
 *Transform your Azure architecture diagrams into production-ready infrastructure code*
 """
     
-    def _add_scripts(self, zipf: zipfile.ZipFile, templates: Dict[str, Any]):
-        """Add scripts to ZIP"""
+    def _add_scripts(self, zipf: zipfile.ZipFile, templates: Dict[str, Any], environment: str):
+        """Add environment-specific scripts to ZIP"""
         scripts = templates.get('scripts', {})
         
         for script_name, script_content in scripts.items():
-            zipf.writestr(f"scripts/{script_name}", script_content)
-        
-        # Add essential utility scripts only
-        validation_script = self._generate_validation_script()
-        zipf.writestr("scripts/validate.ps1", validation_script)
-        
-        deploy_script = self._generate_deploy_script()
-        zipf.writestr("scripts/deploy.ps1", deploy_script)
+            # Only include scripts for the target environment
+            if environment in script_name or 'main' in script_name or not any(env in script_name for env in ['dev', 'staging', 'prod']):
+                zipf.writestr(f"scripts/{script_name}", script_content)
     
     def _generate_deploy_script(self) -> str:
         """Generate deployment script"""

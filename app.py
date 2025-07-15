@@ -86,7 +86,8 @@ def process_architecture_diagram(filepath, environment):
     # Step 4: Generate bicep templates and YAML pipelines with Agent 3
     bicep_templates = bicep_generator.generate_bicep_templates(
         architecture_analysis, 
-        policy_compliance
+        policy_compliance,
+        environment
     )
     
     # Step 5: Create ZIP file with all generated content

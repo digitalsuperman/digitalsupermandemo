@@ -38,7 +38,7 @@ class BicepGenerator:
         # Load Bicep templates
         self.bicep_templates = self._load_bicep_templates()
     
-    def generate_bicep_templates(self, architecture_analysis: Dict[str, Any], policy_compliance: Dict[str, Any]) -> Dict[str, Any]:
+    def generate_bicep_templates(self, architecture_analysis: Dict[str, Any], policy_compliance: Dict[str, Any], environment: str = 'dev') -> Dict[str, Any]:
         """
         Generate Bicep templates and YAML pipelines based on analysis and compliance
         """
@@ -46,7 +46,8 @@ class BicepGenerator:
             # Create generation prompt
             generation_prompt = self._create_generation_prompt(
                 architecture_analysis,
-                policy_compliance
+                policy_compliance,
+                environment
             )
             
             # Call OpenAI API for Bicep generation
@@ -69,7 +70,8 @@ class BicepGenerator:
             generation_result = self._parse_generation_response(
                 response.choices[0].message.content,
                 architecture_analysis,
-                policy_compliance
+                policy_compliance,
+                environment
             )
             
             return generation_result
@@ -169,312 +171,6 @@ resource appService 'Microsoft.Web/sites@2023-01-01' = {
 """
         }
     
-    def _create_generation_prompt(self, analysis: Dict[str, Any], compliance: Dict[str, Any]) -> str:
-        """Create Bicep generation prompt"""
-        
-        prompt = f"""
-        Please generate complete Azure Bicep templates and Azure DevOps YAML pipelines based on the following:
-        
-        Architecture Analysis:
-        {json.dumps(analysis, indent=2)}
-        
-        Policy Compliance Results:
-        {json.dumps(compliance, indent=2)}
-        
-        Please provide the response in the following JSON structure:
-        {{
-            "bicep_templates": {{
-                "main.bicep": "main bicep template content",
-                "modules/": {{
-                    "network.bicep": "network module content",
-                    "compute.bicep": "compute module content",
-                    "storage.bicep": "storage module content",
-                    "security.bicep": "security module content"
-                }},
-                "parameters/": {{
-                    "dev.parameters.json": "development parameters",
-                    "prod.parameters.json": "production parameters"
-                }}
-            }},
-            "yaml_pipelines": {{
-                "azure-pipelines.yml": "main pipeline content",
-                "pipelines/": {{
-                    "build.yml": "build pipeline content",
-                    "deploy-dev.yml": "development deployment pipeline",
-                    "deploy-prod.yml": "production deployment pipeline"
-                }}
-            }},
-            "documentation": {{
-                "README.md": "comprehensive documentation",
-                "DEPLOYMENT.md": "deployment instructions",
-                "COMPLIANCE.md": "compliance documentation"
-            }},
-            "scripts": {{
-                "deploy.ps1": "PowerShell deployment script",
-                "validate.ps1": "PowerShell validation script"
-            }}
-        }}
-        
-        Requirements:
-        1. Generate production-ready Bicep templates with proper parameterization
-        2. Include security best practices from compliance analysis
-        3. Create modular Bicep templates for maintainability
-        4. Generate Azure DevOps YAML pipelines for CI/CD
-        5. Include proper parameter files for different environments
-        6. Add comprehensive documentation
-        7. Include validation and deployment scripts
-        8. Follow Azure Well-Architected Framework principles
-        9. Implement all compliance recommendations where possible
-        10. Use latest Azure resource API versions
-        
-        Focus on:
-        - Infrastructure as Code best practices
-        - Security and compliance requirements
-        - Scalability and maintainability
-        - Cost optimization
-        - Monitoring and logging
-        - Disaster recovery considerations
-        """
-        
-        return prompt
-    
-    def _parse_generation_response(self, response: str, analysis: Dict[str, Any], compliance: Dict[str, Any]) -> Dict[str, Any]:
-        """Parse the generation response"""
-        try:
-            # Try to extract JSON from the response
-            import re
-            json_match = re.search(r'\{.*\}', response, re.DOTALL)
-            if json_match:
-                generation_data = json.loads(json_match.group())
-                generation_data['metadata'] = {
-                    'generated_timestamp': self._get_timestamp(),
-                    'source_analysis': analysis,
-                    'compliance_check': compliance
-                }
-                return generation_data
-            else:
-                return self._fallback_generation_parse(response, analysis, compliance)
-        except json.JSONDecodeError:
-            return self._fallback_generation_parse(response, analysis, compliance)
-    
-    def _fallback_generation_parse(self, response: str, analysis: Dict[str, Any], compliance: Dict[str, Any]) -> Dict[str, Any]:
-        """Fallback parsing for generation response"""
-        return {
-            'bicep_templates': {
-                'main.bicep': self._generate_fallback_bicep(analysis)
-            },
-            'yaml_pipelines': {
-                'azure-pipelines.yml': self._generate_fallback_pipeline()
-            },
-            'documentation': {
-                'README.md': self._generate_fallback_readme()
-            },
-            'scripts': {
-                'deploy.ps1': self._generate_fallback_deploy_script()
-            },
-            'metadata': {
-                'generated_timestamp': self._get_timestamp(),
-                'source_analysis': analysis,
-                'compliance_check': compliance,
-                'parsing_note': 'Used fallback templates due to JSON parsing error'
-            },
-            'raw_response': response
-        }
-    
-    def _generate_fallback_bicep(self, analysis: Dict[str, Any]) -> str:
-        """Generate fallback Bicep template"""
-        components = analysis.get('components', [])
-        
-        bicep_content = """
-@description('Location for all resources')
-param location string = resourceGroup().location
-
-@description('Environment (dev, staging, prod)')
-param environment string = 'dev'
-
-@description('Common tags for all resources')
-param tags object = {
-  Environment: environment
-  CreatedBy: 'DigitalSuperman'
-  Project: 'Infrastructure'
-}
-"""
-        
-        # Add basic resources based on detected components
-        for component in components:
-            component_type = component.get('type', '').lower()
-            if 'storage' in component_type:
-                bicep_content += "\n" + self.bicep_templates['storage_account']
-            elif 'app' in component_type or 'web' in component_type:
-                bicep_content += "\n" + self.bicep_templates['app_service']
-        
-        return bicep_content
-    
-    def _generate_fallback_pipeline(self) -> str:
-        """Generate fallback Azure DevOps pipeline"""
-        return """
-trigger:
-  branches:
-    include:
-    - main
-    - develop
-
-pool:
-  vmImage: 'ubuntu-latest'
-
-variables:
-  azureSubscription: 'Azure-Service-Connection'
-  resourceGroupName: 'rg-digitalsuperman'
-  location: 'East US'
-
-stages:
-- stage: Build
-  displayName: 'Build and Validate'
-  jobs:
-  - job: ValidateBicep
-    displayName: 'Validate Bicep Templates'
-    steps:
-    - task: AzureCLI@2
-      displayName: 'Validate Bicep Templates'
-      inputs:
-        azureSubscription: $(azureSubscription)
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-          az bicep build --file main.bicep
-          az deployment group validate --resource-group $(resourceGroupName) --template-file main.bicep
-
-- stage: Deploy
-  displayName: 'Deploy Infrastructure'
-  dependsOn: Build
-  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-  jobs:
-  - deployment: DeployInfrastructure
-    displayName: 'Deploy to Azure'
-    environment: 'production'
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - task: AzureCLI@2
-            displayName: 'Deploy Bicep Templates'
-            inputs:
-              azureSubscription: $(azureSubscription)
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                az deployment group create --resource-group $(resourceGroupName) --template-file main.bicep
-"""
-    
-    def _generate_fallback_readme(self) -> str:
-        """Generate fallback README"""
-        return """
-# Digital Superman - Azure Infrastructure
-
-This repository contains the Azure infrastructure templates generated by Digital Superman.
-
-## Overview
-
-This infrastructure was automatically generated based on your Azure architecture diagram analysis.
-
-## Structure
-
-- `main.bicep` - Main Bicep template
-- `azure-pipelines.yml` - Azure DevOps CI/CD pipeline
-- `deploy.ps1` - PowerShell deployment script
-
-## Deployment
-
-### Prerequisites
-
-- Azure CLI installed and configured
-- Azure subscription with appropriate permissions
-- Azure DevOps project (for CI/CD)
-
-### Manual Deployment
-
-1. Login to Azure:
-   ```bash
-   az login
-   ```
-
-2. Create resource group:
-   ```bash
-   az group create --name rg-digitalsuperman --location "East US"
-   ```
-
-3. Deploy template:
-   ```bash
-   az deployment group create --resource-group rg-digitalsuperman --template-file main.bicep
-   ```
-
-### CI/CD Deployment
-
-1. Set up Azure DevOps service connection
-2. Import the pipeline from `azure-pipelines.yml`
-3. Configure pipeline variables
-4. Run the pipeline
-
-## Security
-
-This infrastructure follows Azure security best practices and compliance requirements.
-
-## Support
-
-For issues or questions, please refer to the compliance documentation.
-"""
-    
-    def _generate_fallback_deploy_script(self) -> str:
-        """Generate fallback deployment script"""
-        return """
-param(
-    [Parameter(Mandatory=$true)]
-    [string]$ResourceGroupName,
-    
-    [Parameter(Mandatory=$true)]
-    [string]$Location,
-    
-    [Parameter(Mandatory=$false)]
-    [string]$Environment = "dev"
-)
-
-# Check if Azure CLI is installed
-if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
-    Write-Error "Azure CLI is not installed. Please install Azure CLI first."
-    exit 1
-}
-
-# Check if logged in to Azure
-$account = az account show --query "id" -o tsv
-if (-not $account) {
-    Write-Host "Not logged in to Azure. Please login first."
-    az login
-}
-
-# Create resource group if it doesn't exist
-Write-Host "Creating resource group: $ResourceGroupName"
-az group create --name $ResourceGroupName --location $Location
-
-# Deploy Bicep template
-Write-Host "Deploying Bicep template..."
-az deployment group create `
-    --resource-group $ResourceGroupName `
-    --template-file main.bicep `
-    --parameters environment=$Environment
-
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "Deployment completed successfully!" -ForegroundColor Green
-} else {
-    Write-Error "Deployment failed!"
-    exit 1
-}
-"""
-    
-    def _get_timestamp(self) -> str:
-        """Get current timestamp"""
-        from datetime import datetime
-        return datetime.now().isoformat()
-    
     def generate_deployment_guide(self, templates: Dict[str, Any]) -> str:
         """Generate deployment guide"""
         guide = """
@@ -560,3 +256,535 @@ az group delete --name your-rg-name --yes --no-wait
 ```
 """
         return guide
+    
+    def _create_generation_prompt(self, analysis: Dict[str, Any], compliance: Dict[str, Any], environment: str) -> str:
+        """Create Bicep generation prompt"""
+        
+        # Get environment-specific requirements
+        env_requirements = self._get_environment_requirements(environment)
+        
+        prompt = f"""
+        Please generate complete Azure Bicep templates and a single Azure DevOps YAML pipeline based on the following:
+        
+        Target Environment: {environment.upper()}
+        Environment Requirements: {json.dumps(env_requirements, indent=2)}
+        
+        Architecture Analysis:
+        {json.dumps(analysis, indent=2)}
+        
+        Policy Compliance Results:
+        {json.dumps(compliance, indent=2)}
+        
+        Please provide the response in the following JSON structure:
+        {{
+            "bicep_templates": {{
+                "main.bicep": "main bicep template content",
+                "modules/": {{
+                    "network.bicep": "network module content",
+                    "compute.bicep": "compute module content",
+                    "storage.bicep": "storage module content",
+                    "security.bicep": "security module content"
+                }},
+                "parameters/": {{
+                    "{environment}.parameters.json": "environment-specific parameters"
+                }}
+            }},
+            "yaml_pipelines": {{
+                "azure-pipelines-{environment}.yml": "single environment-specific pipeline content"
+            }},
+            "documentation": {{
+                "README.md": "comprehensive documentation for {environment}",
+                "DEPLOYMENT.md": "deployment instructions for {environment}"
+            }},
+            "scripts": {{
+                "deploy-{environment}.ps1": "PowerShell deployment script for {environment}"
+            }}
+        }}
+        
+        Requirements:
+        1. Generate production-ready Bicep templates with proper parameterization for {environment}
+        2. Include security best practices from compliance analysis
+        3. Create modular Bicep templates for maintainability
+        4. Generate ONLY ONE Azure DevOps YAML pipeline optimized for {environment}
+        5. Include parameter file ONLY for {environment}
+        6. Add comprehensive documentation specific to {environment}
+        7. Include validation and deployment scripts for {environment}
+        8. Follow Azure Well-Architected Framework principles
+        9. Implement all compliance recommendations where possible
+        10. Use latest Azure resource API versions
+        
+        Environment-Specific Guidelines:
+        - For DEVELOPMENT: Simple pipeline with basic validation, lower SKUs, relaxed policies
+        - For PRODUCTION: Multi-stage pipeline with approvals, security scans, high-availability SKUs, strict governance
+        
+        Focus on:
+        - Infrastructure as Code best practices
+        - Security and compliance requirements
+        - Scalability and maintainability
+        - Cost optimization
+        - Monitoring and logging
+        - Disaster recovery considerations
+        """
+        
+        return prompt
+    
+    def _parse_generation_response(self, response: str, analysis: Dict[str, Any], compliance: Dict[str, Any], environment: str) -> Dict[str, Any]:
+        """Parse the generation response"""
+        try:
+            # Try to extract JSON from the response
+            import re
+            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            if json_match:
+                generation_data = json.loads(json_match.group())
+                generation_data['metadata'] = {
+                    'generated_timestamp': self._get_timestamp(),
+                    'target_environment': environment,
+                    'source_analysis': analysis,
+                    'compliance_check': compliance
+                }
+                return generation_data
+            else:
+                return self._fallback_generation_parse(response, analysis, compliance, environment)
+        except json.JSONDecodeError:
+            return self._fallback_generation_parse(response, analysis, compliance, environment)
+    
+    def _fallback_generation_parse(self, response: str, analysis: Dict[str, Any], compliance: Dict[str, Any], environment: str) -> Dict[str, Any]:
+        """Fallback parsing for generation response"""
+        return {
+            'bicep_templates': {
+                'main.bicep': self._generate_fallback_bicep(analysis, environment)
+            },
+            'yaml_pipelines': {
+                f'azure-pipelines-{environment}.yml': self._generate_fallback_pipeline(environment)
+            },
+            'documentation': {
+                'README.md': self._generate_fallback_readme(environment)
+            },
+            'scripts': {
+                f'deploy-{environment}.ps1': self._generate_fallback_deploy_script(environment)
+            },
+            'metadata': {
+                'generated_timestamp': self._get_timestamp(),
+                'target_environment': environment,
+                'source_analysis': analysis,
+                'compliance_check': compliance,
+                'parsing_note': 'Used fallback templates due to JSON parsing error'
+            },
+            'raw_response': response
+        }
+    
+    def _generate_fallback_bicep(self, analysis: Dict[str, Any], environment: str) -> str:
+        """Generate fallback Bicep template"""
+        components = analysis.get('components', [])
+        
+        bicep_content = f"""
+@description('Location for all resources')
+param location string = resourceGroup().location
+
+@description('Environment ({environment})')
+param environment string = '{environment}'
+
+@description('Common tags for all resources')
+param tags object = {{
+  Environment: environment
+  CreatedBy: 'DigitalSuperman'
+  Project: 'Infrastructure'
+  GeneratedFor: '{environment.title()}'
+}}
+"""
+        
+        # Add basic resources based on detected components
+        for component in components:
+            component_type = component.get('type', '').lower()
+            if 'storage' in component_type:
+                bicep_content += "\n" + self.bicep_templates['storage_account']
+            elif 'app' in component_type or 'web' in component_type:
+                bicep_content += "\n" + self.bicep_templates['app_service']
+        
+        return bicep_content
+    
+    def _generate_fallback_pipeline(self, environment: str) -> str:
+        """Generate fallback Azure DevOps pipeline"""
+        
+        # Environment-specific pipeline configuration
+        env_config = self._get_environment_requirements(environment)
+        
+        if environment.lower() == 'production':
+            return f"""
+name: Azure-Infrastructure-{environment.title()}-$(Date:yyyyMMdd)$(Rev:.r)
+
+trigger:
+  branches:
+    include:
+    - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  azureSubscription: 'Azure-{environment.title()}-Service-Connection'
+  resourceGroupName: 'rg-digitalsuperman-{environment}'
+  location: 'East US'
+  templatePath: 'bicep/main.bicep'
+  parametersPath: 'bicep/parameters/{environment}.parameters.json'
+
+stages:
+- stage: Validate
+  displayName: 'Validate Bicep Templates'
+  jobs:
+  - job: ValidateJob
+    displayName: 'Validate Templates'
+    steps:
+    - task: AzureCLI@2
+      displayName: 'Validate Bicep Template'
+      inputs:
+        azureSubscription: $(azureSubscription)
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az bicep build --file $(templatePath)
+          az deployment group validate \\
+            --resource-group $(resourceGroupName) \\
+            --template-file $(templatePath) \\
+            --parameters @$(parametersPath)
+
+- stage: SecurityScan
+  displayName: 'Security Scanning'
+  dependsOn: Validate
+  jobs:
+  - job: SecurityJob
+    displayName: 'Security Scan'
+    steps:
+    - task: AzureCLI@2
+      displayName: 'Security Scan Templates'
+      inputs:
+        azureSubscription: $(azureSubscription)
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo "Running security scans..."
+          # Add your security scanning tools here
+
+- stage: ProductionApproval
+  displayName: 'Production Deployment Approval'
+  dependsOn: SecurityScan
+  jobs:
+  - deployment: ApprovalJob
+    displayName: 'Approve Production Deployment'
+    environment: 'production-approval'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - script: echo "Approved for production deployment"
+
+- stage: Deploy
+  displayName: 'Deploy to {environment.title()}'
+  dependsOn: ProductionApproval
+  jobs:
+  - deployment: DeployJob
+    displayName: 'Deploy Infrastructure'
+    environment: '{environment}'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+          - task: AzureCLI@2
+            displayName: 'Deploy Infrastructure'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az group create --name $(resourceGroupName) --location "$(location)"
+                az deployment group create \\
+                  --resource-group $(resourceGroupName) \\
+                  --template-file $(templatePath) \\
+                  --parameters @$(parametersPath) \\
+                  --verbose
+
+- stage: SmokeTest
+  displayName: 'Smoke Tests'
+  dependsOn: Deploy
+  jobs:
+  - job: SmokeTestJob
+    displayName: 'Run Smoke Tests'
+    steps:
+    - task: AzureCLI@2
+      displayName: 'Validate Deployment'
+      inputs:
+        azureSubscription: $(azureSubscription)
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo "Running smoke tests..."
+          az resource list --resource-group $(resourceGroupName) --output table
+"""
+        else:
+            # Development/Staging pipeline - simplified
+            return f"""
+name: Azure-Infrastructure-{environment.title()}-$(Date:yyyyMMdd)$(Rev:.r)
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  azureSubscription: 'Azure-{environment.title()}-Service-Connection'
+  resourceGroupName: 'rg-digitalsuperman-{environment}'
+  location: 'East US'
+  templatePath: 'bicep/main.bicep'
+  parametersPath: 'bicep/parameters/{environment}.parameters.json'
+
+stages:
+- stage: Validate
+  displayName: 'Validate Bicep Templates'
+  jobs:
+  - job: ValidateJob
+    displayName: 'Validate Templates'
+    steps:
+    - task: AzureCLI@2
+      displayName: 'Validate Bicep Template'
+      inputs:
+        azureSubscription: $(azureSubscription)
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az bicep build --file $(templatePath)
+          az deployment group validate \\
+            --resource-group $(resourceGroupName) \\
+            --template-file $(templatePath) \\
+            --parameters @$(parametersPath)
+
+- stage: Deploy
+  displayName: 'Deploy to {environment.title()}'
+  dependsOn: Validate
+  jobs:
+  - deployment: DeployJob
+    displayName: 'Deploy Infrastructure'
+    environment: '{environment}'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+          - task: AzureCLI@2
+            displayName: 'Deploy Infrastructure'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az group create --name $(resourceGroupName) --location "$(location)"
+                az deployment group create \\
+                  --resource-group $(resourceGroupName) \\
+                  --template-file $(templatePath) \\
+                  --parameters @$(parametersPath) \\
+                  --verbose
+"""
+    
+    def _generate_fallback_readme(self, environment: str) -> str:
+        """Generate fallback README"""
+        return f"""
+# Digital Superman - Azure Infrastructure ({environment.title()})
+
+This repository contains the Azure infrastructure templates generated by Digital Superman for the **{environment.upper()}** environment.
+
+## Overview
+
+This infrastructure was automatically generated based on your Azure architecture diagram analysis and optimized for {environment} deployment.
+
+## Structure
+
+- `bicep/main.bicep` - Main Bicep template for {environment}
+- `bicep/parameters/{environment}.parameters.json` - Environment-specific parameters
+- `azure-pipelines-{environment}.yml` - Azure DevOps CI/CD pipeline for {environment}
+- `deploy-{environment}.ps1` - PowerShell deployment script for {environment}
+
+## Environment: {environment.upper()}
+
+This configuration is specifically tailored for {environment} with appropriate:
+- Resource SKUs and configurations
+- Security and compliance settings
+- Pipeline complexity and approval gates
+- Monitoring and backup requirements
+
+## Deployment
+
+### Prerequisites
+
+- Azure CLI installed and configured
+- Azure subscription with appropriate permissions
+- Azure DevOps project (for CI/CD)
+
+### Manual Deployment
+
+1. Login to Azure:
+   ```bash
+   az login
+   ```
+
+2. Create resource group:
+   ```bash
+   az group create --name rg-digitalsuperman --location "East US"
+   ```
+
+3. Deploy template:
+   ```bash
+   az deployment group create --resource-group rg-digitalsuperman --template-file main.bicep
+   ```
+
+### CI/CD Deployment
+
+1. Set up Azure DevOps service connection
+2. Import the pipeline from `azure-pipelines.yml`
+3. Configure pipeline variables
+4. Run the pipeline
+
+## Security
+
+This infrastructure follows Azure security best practices and compliance requirements.
+
+## Support
+
+For issues or questions, please refer to the compliance documentation.
+"""
+    
+    def _generate_fallback_deploy_script(self, environment: str) -> str:
+        """Generate fallback deployment script"""
+        return f"""
+param(
+    [Parameter(Mandatory=$false)]
+    [string]$ResourceGroupName = "rg-digitalsuperman-{environment}",
+    
+    [Parameter(Mandatory=$false)]
+    [string]$Location = "East US",
+    
+    [Parameter(Mandatory=$false)]
+    [string]$Environment = "{environment}",
+    
+    [Parameter(Mandatory=$false)]
+    [string]$TemplateFile = "bicep/main.bicep",
+    
+    [Parameter(Mandatory=$false)]
+    [string]$ParametersFile = "bicep/parameters/{environment}.parameters.json"
+)
+
+Write-Host "🚀 Digital Superman - Deploying Infrastructure for {environment.upper()}" -ForegroundColor Green
+Write-Host "Environment: $Environment" -ForegroundColor Cyan
+Write-Host "Resource Group: $ResourceGroupName" -ForegroundColor Cyan
+Write-Host "Location: $Location" -ForegroundColor Cyan
+
+# Check if Azure CLI is installed
+if (-not (Get-Command az -ErrorAction SilentlyContinue)) {{
+    Write-Error "❌ Azure CLI is not installed. Please install Azure CLI first."
+    exit 1
+}}
+
+# Check if logged in to Azure
+$account = az account show --query "id" -o tsv 2>$null
+if (-not $account) {{
+    Write-Host "⚠️ Not logged in to Azure. Please login first." -ForegroundColor Yellow
+    az login
+}}
+
+# Validate template files exist
+if (-not (Test-Path $TemplateFile)) {{
+    Write-Error "❌ Template file not found: $TemplateFile"
+    exit 1
+}}
+
+if (-not (Test-Path $ParametersFile)) {{
+    Write-Error "❌ Parameters file not found: $ParametersFile"
+    exit 1
+}}
+
+# Install Bicep CLI if not already installed
+Write-Host "🔧 Installing/Updating Bicep CLI..." -ForegroundColor Yellow
+az bicep install
+
+# Create resource group if it doesn't exist
+Write-Host "📦 Creating resource group: $ResourceGroupName" -ForegroundColor Yellow
+az group create --name $ResourceGroupName --location $Location
+
+# Validate template
+Write-Host "✅ Validating Bicep template..." -ForegroundColor Yellow
+az deployment group validate `
+    --resource-group $ResourceGroupName `
+    --template-file $TemplateFile `
+    --parameters @$ParametersFile
+
+if ($LASTEXITCODE -ne 0) {{
+    Write-Error "❌ Template validation failed!"
+    exit 1
+}}
+
+Write-Host "✅ Template validation successful!" -ForegroundColor Green
+
+# Deploy template
+Write-Host "🚀 Deploying infrastructure to {environment.upper()}..." -ForegroundColor Yellow
+az deployment group create `
+    --resource-group $ResourceGroupName `
+    --template-file $TemplateFile `
+    --parameters @$ParametersFile `
+    --verbose
+
+if ($LASTEXITCODE -eq 0) {{
+    Write-Host "✅ Deployment completed successfully!" -ForegroundColor Green
+    Write-Host "📋 Listing deployed resources:" -ForegroundColor Cyan
+    az resource list --resource-group $ResourceGroupName --output table
+}} else {{
+    Write-Error "❌ Deployment failed!"
+    exit 1
+}}
+
+Write-Host "🎉 Infrastructure deployment for {environment.upper()} completed!" -ForegroundColor Green
+"""
+    
+    def _get_timestamp(self) -> str:
+        """Get current timestamp"""
+        from datetime import datetime
+        return datetime.now().isoformat()
+    
+    def _get_environment_requirements(self, environment: str) -> Dict[str, Any]:
+        """Get environment-specific requirements for template generation"""
+        requirements = {
+            'development': {
+                'pipeline_complexity': 'simple',
+                'approval_gates': False,
+                'security_scans': 'basic',
+                'deployment_stages': ['validate', 'deploy'],
+                'sku_tier': 'basic',
+                'monitoring': 'basic',
+                'backup_required': False,
+                'multi_region': False
+            },
+            'staging': {
+                'pipeline_complexity': 'moderate',
+                'approval_gates': True,
+                'security_scans': 'standard',
+                'deployment_stages': ['validate', 'security-scan', 'deploy', 'test'],
+                'sku_tier': 'standard',
+                'monitoring': 'standard',
+                'backup_required': True,
+                'multi_region': False
+            },
+            'production': {
+                'pipeline_complexity': 'advanced',
+                'approval_gates': True,
+                'security_scans': 'comprehensive',
+                'deployment_stages': ['validate', 'security-scan', 'approval', 'deploy-staging', 'approval', 'deploy-production', 'smoke-test'],
+                'sku_tier': 'premium',
+                'monitoring': 'comprehensive',
+                'backup_required': True,
+                'multi_region': True
+            }
+        }
+        
+        return requirements.get(environment.lower(), requirements['development'])

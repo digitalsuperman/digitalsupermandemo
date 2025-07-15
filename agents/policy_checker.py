@@ -86,67 +86,143 @@ class PolicyChecker:
             }
     
     def _load_policy_templates(self) -> Dict[str, Any]:
-        """Load Azure policy templates"""
+        """Load Azure policy templates with environment-specific compliance levels"""
         return {
             'development': {
-                'security': [
-                    'Enable encryption at rest for all storage accounts',
-                    'Use managed identities for service authentication',
-                    'Implement network security groups (NSGs)',
-                    'Enable Azure Security Center recommendations'
-                ],
-                'networking': [
-                    'Use private endpoints for PaaS services',
-                    'Implement proper subnet segmentation',
-                    'Configure Azure Firewall or NSGs for traffic filtering'
-                ],
-                'governance': [
-                    'Apply consistent resource tagging',
-                    'Use Azure Policy for governance enforcement',
-                    'Implement resource locks for critical resources'
-                ],
-                'cost_optimization': [
-                    'Use appropriate VM sizes for workloads',
-                    'Implement auto-scaling where applicable',
-                    'Use Azure Reserved Instances for predictable workloads'
-                ]
+                'compliance_level': 'relaxed',
+                'required_policies': 5,  # Minimum policies to enforce
+                'security': {
+                    'level': 'basic',
+                    'policies': [
+                        'Enable encryption at rest for storage accounts',
+                        'Use managed identities where possible',
+                        'Implement basic network security groups (NSGs)',
+                        'Enable Azure Security Center free tier'
+                    ]
+                },
+                'networking': {
+                    'level': 'basic',
+                    'policies': [
+                        'Implement basic subnet segmentation',
+                        'Configure NSGs for traffic filtering'
+                    ]
+                },
+                'governance': {
+                    'level': 'basic',
+                    'policies': [
+                        'Apply basic resource tagging (Environment, CreatedBy)',
+                        'Use resource locks for critical resources only'
+                    ]
+                },
+                'cost_optimization': {
+                    'level': 'basic',
+                    'policies': [
+                        'Use appropriate VM sizes for development workloads',
+                        'Consider auto-scaling for variable workloads'
+                    ]
+                }
+            },
+            'staging': {
+                'compliance_level': 'moderate',
+                'required_policies': 8,  # More policies required
+                'security': {
+                    'level': 'moderate',
+                    'policies': [
+                        'Enable encryption at rest and in transit',
+                        'Use Azure Key Vault for secrets management',
+                        'Use managed identities exclusively',
+                        'Enable Azure Security Center Standard tier',
+                        'Implement basic audit logging'
+                    ]
+                },
+                'networking': {
+                    'level': 'moderate',
+                    'policies': [
+                        'Use private endpoints for PaaS services',
+                        'Implement proper subnet segmentation',
+                        'Configure Azure Firewall or advanced NSGs',
+                        'Consider DDoS protection'
+                    ]
+                },
+                'governance': {
+                    'level': 'moderate',
+                    'policies': [
+                        'Apply comprehensive resource tagging',
+                        'Use Azure Policy for governance enforcement',
+                        'Implement resource locks for all important resources',
+                        'Implement proper RBAC'
+                    ]
+                },
+                'availability': {
+                    'level': 'moderate',
+                    'policies': [
+                        'Consider availability zones',
+                        'Implement backup strategies'
+                    ]
+                },
+                'cost_optimization': {
+                    'level': 'moderate',
+                    'policies': [
+                        'Use appropriate VM sizes with monitoring',
+                        'Implement auto-scaling',
+                        'Consider Azure Reserved Instances'
+                    ]
+                }
             },
             'production': {
-                'security': [
-                    'Enable encryption at rest and in transit',
-                    'Use Azure Key Vault for secrets management',
-                    'Implement multi-factor authentication',
-                    'Enable Azure Security Center Standard tier',
-                    'Use managed identities exclusively',
-                    'Implement Azure Sentinel for SIEM',
-                    'Enable audit logging for all resources'
-                ],
-                'networking': [
-                    'Use private endpoints for all PaaS services',
-                    'Implement network segmentation with NSGs',
-                    'Use Azure Firewall for centralized traffic filtering',
-                    'Implement DDoS protection',
-                    'Use Application Gateway with WAF'
-                ],
-                'governance': [
-                    'Apply comprehensive resource tagging strategy',
-                    'Use Azure Policy for strict governance enforcement',
-                    'Implement resource locks for all critical resources',
-                    'Use Azure Blueprints for consistent deployments',
-                    'Implement proper RBAC with least privilege'
-                ],
-                'availability': [
-                    'Implement multi-region deployment',
-                    'Use availability zones where supported',
-                    'Implement backup and disaster recovery',
-                    'Use Azure Site Recovery for business continuity'
-                ],
-                'cost_optimization': [
-                    'Use appropriate VM sizes with monitoring',
-                    'Implement comprehensive auto-scaling',
-                    'Use Azure Reserved Instances for stable workloads',
-                    'Implement Azure Cost Management alerts'
-                ]
+                'compliance_level': 'strict',
+                'required_policies': 15,  # Maximum compliance required
+                'security': {
+                    'level': 'strict',
+                    'policies': [
+                        'Enable encryption at rest and in transit (MANDATORY)',
+                        'Use Azure Key Vault for ALL secrets management (MANDATORY)',
+                        'Implement multi-factor authentication (MANDATORY)',
+                        'Enable Azure Security Center Standard tier (MANDATORY)',
+                        'Use managed identities exclusively (MANDATORY)',
+                        'Implement Azure Sentinel for SIEM (MANDATORY)',
+                        'Enable comprehensive audit logging (MANDATORY)',
+                        'Implement security monitoring and alerting (MANDATORY)'
+                    ]
+                },
+                'networking': {
+                    'level': 'strict',
+                    'policies': [
+                        'Use private endpoints for ALL PaaS services (MANDATORY)',
+                        'Implement strict network segmentation with NSGs (MANDATORY)',
+                        'Use Azure Firewall for centralized traffic filtering (MANDATORY)',
+                        'Implement DDoS protection (MANDATORY)',
+                        'Use Application Gateway with WAF (MANDATORY)'
+                    ]
+                },
+                'governance': {
+                    'level': 'strict',
+                    'policies': [
+                        'Apply comprehensive resource tagging strategy (MANDATORY)',
+                        'Use Azure Policy for strict governance enforcement (MANDATORY)',
+                        'Implement resource locks for ALL critical resources (MANDATORY)',
+                        'Use Azure Blueprints for consistent deployments (MANDATORY)',
+                        'Implement proper RBAC with least privilege (MANDATORY)'
+                    ]
+                },
+                'availability': {
+                    'level': 'strict',
+                    'policies': [
+                        'Implement multi-region deployment (MANDATORY)',
+                        'Use availability zones where supported (MANDATORY)',
+                        'Implement backup and disaster recovery (MANDATORY)',
+                        'Use Azure Site Recovery for business continuity (MANDATORY)'
+                    ]
+                },
+                'cost_optimization': {
+                    'level': 'strict',
+                    'policies': [
+                        'Use appropriate VM sizes with comprehensive monitoring (MANDATORY)',
+                        'Implement comprehensive auto-scaling (MANDATORY)',
+                        'Use Azure Reserved Instances for stable workloads (MANDATORY)',
+                        'Implement Azure Cost Management alerts (MANDATORY)'
+                    ]
+                }
             }
         }
     
@@ -154,24 +230,42 @@ class PolicyChecker:
         """Get policies specific to the environment"""
         return self.policy_templates.get(environment.lower(), self.policy_templates['development'])
     
-    def _create_compliance_prompt(self, analysis: Dict[str, Any], policies: Dict[str, List[str]], environment: str) -> str:
+    def _create_compliance_prompt(self, analysis: Dict[str, Any], policies: Dict[str, Any], environment: str) -> str:
         """Create compliance check prompt"""
+        
+        compliance_level = policies.get('compliance_level', 'basic')
+        required_policies = policies.get('required_policies', 5)
         
         prompt = f"""
         Please analyze the following Azure architecture for compliance with Microsoft Azure policies.
         
-        Environment: {environment.upper()}
+        ENVIRONMENT: {environment.upper()}
+        COMPLIANCE LEVEL: {compliance_level.upper()}
+        REQUIRED POLICIES TO PASS: {required_policies}
+        
+        IMPORTANT: Apply {compliance_level} compliance standards for {environment} environment:
+        - DEVELOPMENT: Relaxed standards, focus on basic security and functionality
+        - STAGING: Moderate standards, balance between security and development needs  
+        - PRODUCTION: STRICT standards, maximum security and compliance required
         
         Architecture Analysis:
         {json.dumps(analysis, indent=2)}
         
-        Applicable Policies:
+        Environment-Specific Policy Requirements:
         {json.dumps(policies, indent=2)}
         
         Please provide a detailed compliance analysis in the following JSON structure:
         {{
             "overall_compliance": {{
                 "compliant": boolean,
+                "compliance_score": "percentage (0-100)",
+                "compliance_level": "{compliance_level}",
+                "environment": "{environment}",
+                "critical_violations": number,
+                "warnings": number,
+                "required_policies_met": number,
+                "total_required_policies": {required_policies}
+            }},
                 "compliance_score": "percentage",
                 "critical_violations": number,
                 "warnings": number
