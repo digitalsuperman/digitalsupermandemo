@@ -96,11 +96,21 @@ def upload_file():
                     'message': result.get('message', 'An error occurred during processing.')
                 })
         
+        # Extract zip filename and processing summary from successful result
+        if isinstance(result, dict) and 'zip_filename' in result:
+            zip_filename = result['zip_filename']
+            processing_summary = result.get('processing_summary', {})
+        else:
+            # Backward compatibility - if just filename returned
+            zip_filename = result
+            processing_summary = {}
+        
         # Normal successful processing
         return jsonify({
             'success': True,
             'message': 'File processed successfully',
-            'download_url': url_for('download_result', filename=result)
+            'download_url': url_for('download_result', filename=zip_filename),
+            'processing_summary': processing_summary
         })
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error: {str(e)}'})
@@ -162,7 +172,24 @@ def process_architecture_diagram(filepath, environment):
             environment
         )
         
-        return zip_filename
+        # Prepare processing summary for frontend
+        processing_summary = {
+            'architecture_summary': {
+                'components_count': len(architecture_analysis.get('components', [])),
+                'services_identified': len(set(comp.get('type', '') for comp in architecture_analysis.get('components', []))),
+                'environment': environment
+            },
+            'policy_compliance': {
+                'compliant': policy_compliance.get('compliant', False),
+                'violations_count': len(policy_compliance.get('violations', [])),
+                'fixes_applied': len(policy_compliance.get('fixes_applied', []))
+            }
+        }
+        
+        return {
+            'zip_filename': zip_filename,
+            'processing_summary': processing_summary
+        }
         
     except Exception as e:
         raise Exception(f"Processing failed: {str(e)}")

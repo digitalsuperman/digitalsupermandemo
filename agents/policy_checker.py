@@ -6,11 +6,19 @@ Checks the analyzed architecture against Microsoft Azure policies for compliance
 import json
 import os
 from typing import Dict, List, Any
-import openai
-from dotenv import load_dotenv
 import hashlib
 
-load_dotenv()
+try:
+    from openai import OpenAI
+except ImportError:
+    print("⚠️ OpenAI package not installed. Install with: pip install openai")
+    OpenAI = None
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    print("⚠️ python-dotenv package not installed. Install with: pip install python-dotenv")
 
 class PolicyChecker:
     def __init__(self):
@@ -19,22 +27,27 @@ class PolicyChecker:
         self.azure_key = os.getenv('AZURE_AI_AGENT2_KEY')
         self.azure_deployment = os.getenv('AZURE_AI_AGENT2_DEPLOYMENT', 'gpt-4')
         
-        if self.azure_endpoint and self.azure_key:
+        if OpenAI and self.azure_endpoint and self.azure_key:
             # Use Azure AI Foundry endpoint
-            self.openai_client = openai.AzureOpenAI(
+            from openai import AzureOpenAI
+            self.openai_client = AzureOpenAI(
                 azure_endpoint=self.azure_endpoint,
                 api_key=self.azure_key,
                 api_version="2024-02-01"
             )
             self.model_name = self.azure_deployment
             print(f"✅ Policy Checker: Using Azure AI Foundry endpoint")
-        else:
+        elif OpenAI:
             # Fallback to OpenAI
-            self.openai_client = openai.OpenAI(
+            self.openai_client = OpenAI(
                 api_key=os.getenv('OPENAI_API_KEY')
             )
             self.model_name = "gpt-4"
             print(f"⚠️ Policy Checker: Using OpenAI fallback (configure Azure AI Foundry for production)")
+        else:
+            print("❌ Policy Checker: OpenAI package not available")
+            self.openai_client = None
+            self.model_name = None
         
         # Load policy templates
         self.policy_templates = self._load_policy_templates()
@@ -71,7 +84,7 @@ class PolicyChecker:
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are an Azure compliance expert. Analyze the architecture against Microsoft Azure policies and provide detailed compliance recommendations."
+                        "content": "You are an Azure compliance expert specializing in policy compliance. Analyze the architecture against Microsoft Azure policies and provide detailed compliance recommendations."
                     },
                     {
                         "role": "user",
@@ -128,13 +141,6 @@ class PolicyChecker:
                         'Apply basic resource tagging (Environment, CreatedBy)',
                         'Use resource locks for critical resources only'
                     ]
-                },
-                'cost_optimization': {
-                    'level': 'basic',
-                    'policies': [
-                        'Use appropriate VM sizes for development workloads',
-                        'Consider auto-scaling for variable workloads'
-                    ]
                 }
             },
             'staging': {
@@ -173,14 +179,6 @@ class PolicyChecker:
                     'policies': [
                         'Consider availability zones',
                         'Implement backup strategies'
-                    ]
-                },
-                'cost_optimization': {
-                    'level': 'moderate',
-                    'policies': [
-                        'Use appropriate VM sizes with monitoring',
-                        'Implement auto-scaling',
-                        'Consider Azure Reserved Instances'
                     ]
                 }
             },
@@ -227,15 +225,6 @@ class PolicyChecker:
                         'Use availability zones where supported (MANDATORY)',
                         'Implement backup and disaster recovery (MANDATORY)',
                         'Use Azure Site Recovery for business continuity (MANDATORY)'
-                    ]
-                },
-                'cost_optimization': {
-                    'level': 'strict',
-                    'policies': [
-                        'Use appropriate VM sizes with comprehensive monitoring (MANDATORY)',
-                        'Implement comprehensive auto-scaling (MANDATORY)',
-                        'Use Azure Reserved Instances for stable workloads (MANDATORY)',
-                        'Implement Azure Cost Management alerts (MANDATORY)'
                     ]
                 }
             }
@@ -301,11 +290,6 @@ class PolicyChecker:
                     "violations": [],
                     "recommendations": []
                 }},
-                "cost_optimization": {{
-                    "compliant": boolean,
-                    "violations": [],
-                    "recommendations": []
-                }},
                 "availability": {{
                     "compliant": boolean,
                     "violations": [],
@@ -315,7 +299,7 @@ class PolicyChecker:
             "violations": [
                 {{
                     "severity": "critical|warning|info",
-                    "category": "security|networking|governance|cost|availability",
+                    "category": "security|networking|governance|availability",
                     "component": "affected_component_name",
                     "description": "violation_description",
                     "recommendation": "how_to_fix",
@@ -325,7 +309,7 @@ class PolicyChecker:
             "recommendations": [
                 {{
                     "priority": "high|medium|low",
-                    "category": "security|networking|governance|cost|availability",
+                    "category": "security|networking|governance|availability",
                     "component": "affected_component_name",
                     "description": "recommendation_description",
                     "implementation": "how_to_implement",
@@ -338,9 +322,9 @@ class PolicyChecker:
         1. Security best practices and compliance
         2. Network security and segmentation
         3. Governance and resource management
-        4. Cost optimization opportunities
-        5. High availability and disaster recovery
-        6. Specific {environment} environment requirements
+        4. High availability and disaster recovery
+        5. Specific {environment} environment requirements
+        6. Environment-appropriate SKU and service tier recommendations
         """
         
         return prompt
@@ -719,3 +703,14 @@ class PolicyChecker:
         """Get current timestamp"""
         from datetime import datetime
         return datetime.now().isoformat()
+    
+    def optimize_architecture_costs(self, architecture_analysis: Dict[str, Any], environment: str) -> Dict[str, Any]:
+        """
+        (DISABLED) Stub for cost optimization. Returns empty result.
+        """
+        return {
+            'applied_optimizations': [],
+            'cost_savings_estimate': 0,
+            'optimized_components': [],
+            'recommendations': []
+        }

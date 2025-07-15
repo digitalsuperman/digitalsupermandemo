@@ -779,3 +779,14 @@ Write-Host "🎉 Infrastructure deployment for {environment.upper()} completed!"
             oldest_key = next(iter(self._template_cache))
             del self._template_cache[oldest_key]
         self._template_cache[cache_key] = result
+    
+    def optimize_architecture_costs(self, architecture_analysis: Dict[str, Any], environment: str) -> Dict[str, Any]:
+        """
+        (DISABLED) Stub for cost optimization. Returns empty result.
+        """
+        return {
+            'applied_optimizations': [],
+            'cost_savings_estimate': 0,
+            'optimized_components': [],
+            'recommendations': []
+        }

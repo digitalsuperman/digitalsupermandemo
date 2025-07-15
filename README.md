@@ -18,7 +18,7 @@ Transform your Azure architecture diagrams into production-ready infrastructure 
 - Analyzes uploaded architecture diagrams
 - Identifies Azure components and relationships
 - Extracts configuration details and dependencies
-- Provides cost estimates and recommendations
+- Provides Azure policy compliance recommendations
 
 ### 2. Policy Checker
 - Validates architecture against Microsoft Azure policies
@@ -345,7 +345,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [ ] Enhanced AI model fine-tuning
 - [ ] Real-time collaboration features
 - [ ] Integration with more Azure services
-- [ ] Advanced cost optimization recommendations
+- [ ] Advanced policy compliance features
 - [ ] Multi-cloud support (AWS, GCP)
 
 ---

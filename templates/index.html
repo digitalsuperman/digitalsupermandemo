@@ -346,7 +346,7 @@
     <section class="hero-section">
         <div class="container">
             <h1 class="hero-title">Digital Superman</h1>
-            <p class="hero-subtitle">Transform your Azure architecture diagrams into production-ready infrastructure code using AI-powered agents</p>
+            <p class="hero-subtitle">Transform your Azure architecture diagrams into production-ready infrastructure code with AI-powered policy compliance</p>
             <a href="#upload" class="btn btn-primary btn-lg">Get Started</a>
         </div>
     </section>
@@ -438,7 +438,7 @@
                                         </div>
                                         <div>
                                             <h6 class="mb-1 fw-bold">Policy Checker</h6>
-                                            <small class="text-muted" id="agent2Status">Validating Azure policies and compliance...</small>
+                                            <small class="text-muted" id="agent2Status">Validating Azure policies and optimizing costs...</small>
                                         </div>
                                     </div>
                                     <div class="agent-status-badge">
@@ -478,6 +478,23 @@
                                 <i class="fas fa-check-circle text-success mb-3" style="font-size: 3rem;"></i>
                                 <h5 class="fw-bold mb-3">Processing Complete!</h5>
                                 <p class="text-muted mb-4">Your Azure infrastructure code package is ready for download.</p>
+                                
+                                <!-- Processing Summary -->
+                                <div id="processingSummary" class="row text-start mb-4" style="display: none;">
+                                    <div class="col-md-6">
+                                        <div class="card border-0 bg-light">
+                                            <div class="card-body">
+                                                <h6 class="card-title"><i class="fas fa-chart-line text-info me-2"></i>Architecture Analysis</h6>
+                                                <div id="architectureSummary" class="small text-muted">
+                                                    Analysis results will appear here...
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                    </div>
+                                </div>
+                                
                                 <a href="#" id="downloadLink" class="btn btn-primary btn-lg">
                                     <i class="fas fa-download me-2"></i>Download Package
                                 </a>
@@ -567,7 +584,7 @@
                             <i class="fas fa-shield-alt"></i>
                         </div>
                         <h5 class="fw-bold mb-3">Policy Compliance</h5>
-                        <p class="text-muted">AI Agent 2 validates your architecture against Microsoft Azure policies for security, governance, and best practices.</p>
+                        <p class="text-muted">AI Agent 2 validates your architecture against Microsoft Azure policies for security, governance, and best practices while optimizing costs based on your environment (dev uses standard SKUs, production uses premium SKUs).</p>
                     </div>
                 </div>
                 <div class="col-md-4">
@@ -765,7 +782,7 @@
                             
                             setTimeout(() => {
                                 completeAgent(3);
-                                showResults(data.download_url);
+                                showResults(data.download_url, data.processing_summary);
                             }, 4000); // Agent 3: 4 seconds
                         }, 3000); // Agent 2: 3 seconds
                     }, 3000); // Agent 1: 3 seconds
@@ -846,10 +863,31 @@
             }
         }
 
-        function showResults(downloadUrl) {
+        function showResults(downloadUrl, processingSummary = null) {
             progressCard.style.display = 'none';
             resultCard.style.display = 'block';
             document.getElementById('downloadLink').href = downloadUrl;
+            
+            // Display processing summary if available
+            if (processingSummary) {
+                const summaryElement = document.getElementById('processingSummary');
+                summaryElement.style.display = 'block';
+                
+                // Update architecture summary
+                const archSummary = document.getElementById('architectureSummary');
+                const archData = processingSummary.architecture_summary || {};
+                archSummary.innerHTML = `
+                    <div class="mb-2">
+                        <strong>Components:</strong> ${archData.components_count || 0}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Services:</strong> ${archData.services_identified || 0}
+                    </div>
+                    <div>
+                        <strong>Environment:</strong> <span class="badge bg-primary">${(archData.environment || 'development').toUpperCase()}</span>
+                    </div>
+                `;
+            }
         }
 
         function showAzureValidationError(data) {
