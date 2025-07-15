@@ -99,9 +99,28 @@ def process_architecture_diagram(filepath, environment):
         # Step 3: Check policy compliance with Agent 2
         policy_compliance = get_policy_checker().check_compliance(architecture_analysis, environment)
         
-        # Step 4: Generate bicep templates and YAML pipelines with Agent 3
+        # Step 3.5: Auto-fix policy violations if any exist
+        fixed_analysis = architecture_analysis
+        if policy_compliance.get('violations'):
+            print(f"🔧 Auto-fixing {len(policy_compliance.get('violations', []))} policy violations...")
+            fixed_analysis = get_policy_checker().fix_policy_violations(
+                architecture_analysis, 
+                policy_compliance, 
+                environment
+            )
+            
+            # Re-run policy check on fixed analysis
+            print("🔍 Re-checking compliance after auto-fixes...")
+            updated_policy_compliance = get_policy_checker().check_compliance(fixed_analysis, environment)
+            
+            # Update policy result with fix information
+            policy_compliance['fixes_applied'] = fixed_analysis.get('metadata', {}).get('policy_fixes_applied', [])
+            policy_compliance['post_fix_compliance'] = updated_policy_compliance
+            print(f"✅ Policy compliance improved: {len(policy_compliance.get('fixes_applied', []))} fixes applied")
+        
+        # Step 4: Generate bicep templates and YAML pipelines with Agent 3 (using fixed analysis)
         bicep_templates = get_bicep_generator().generate_bicep_templates(
-            architecture_analysis, 
+            fixed_analysis, 
             policy_compliance,
             environment
         )

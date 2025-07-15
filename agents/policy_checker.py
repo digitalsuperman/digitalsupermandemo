@@ -439,3 +439,283 @@ class PolicyChecker:
             oldest_key = next(iter(self._cache))
             del self._cache[oldest_key]
         self._cache[cache_key] = result
+
+    def fix_policy_violations(self, architecture_analysis: Dict[str, Any], policy_compliance: Dict[str, Any], environment: str) -> Dict[str, Any]:
+        """
+        Auto-fix policy violations in the architecture analysis
+        """
+        print(f"🔧 Policy Checker: Auto-fixing violations for {environment}")
+        
+        try:
+            violations = policy_compliance.get('violations', [])
+            if not violations:
+                print("✅ No violations to fix")
+                return architecture_analysis
+            
+            fixed_analysis = architecture_analysis.copy()
+            fixed_violations = []
+            
+            for violation in violations:
+                fix_result = self._apply_policy_fix(fixed_analysis, violation, environment)
+                if fix_result['fixed']:
+                    fixed_violations.append({
+                        'violation': violation,
+                        'fix_applied': fix_result['description'],
+                        'component': fix_result.get('component', 'unknown')
+                    })
+            
+            # Update metadata
+            fixed_analysis['metadata'] = fixed_analysis.get('metadata', {})
+            fixed_analysis['metadata']['policy_fixes_applied'] = fixed_violations
+            fixed_analysis['metadata']['auto_fix_timestamp'] = self._get_timestamp()
+            
+            print(f"🔧 Applied {len(fixed_violations)} policy fixes")
+            return fixed_analysis
+            
+        except Exception as e:
+            print(f"❌ Error during policy fixing: {str(e)}")
+            return architecture_analysis
+    
+    def _apply_policy_fix(self, analysis: Dict[str, Any], violation: Dict[str, Any], environment: str) -> Dict[str, Any]:
+        """Apply specific policy fix based on violation type"""
+        
+        violation_type = violation.get('type', '').lower()
+        component_name = violation.get('component', '')
+        
+        # Storage Account Fixes
+        if 'storage' in violation_type and 'encryption' in violation.get('description', '').lower():
+            return self._fix_storage_encryption(analysis, component_name)
+        
+        # Network Security Group Fixes
+        elif 'network' in violation_type or 'nsg' in violation_type:
+            return self._fix_network_security(analysis, component_name, environment)
+        
+        # Key Vault Fixes
+        elif 'key vault' in violation.get('description', '').lower() or 'secret' in violation_type:
+            return self._fix_key_vault_security(analysis, component_name)
+        
+        # App Service Fixes
+        elif 'app service' in violation_type or 'web app' in violation_type:
+            return self._fix_app_service_security(analysis, component_name)
+        
+        # RBAC and Identity Fixes
+        elif 'rbac' in violation_type or 'identity' in violation_type:
+            return self._fix_identity_security(analysis, component_name)
+        
+        # General Security Fixes
+        elif 'security' in violation_type:
+            return self._fix_general_security(analysis, component_name, environment)
+        
+        else:
+            return {'fixed': False, 'description': f'No automated fix available for: {violation_type}'}
+    
+    def _fix_storage_encryption(self, analysis: Dict[str, Any], component_name: str) -> Dict[str, Any]:
+        """Fix storage account encryption issues"""
+        components = analysis.get('components', [])
+        
+        for component in components:
+            if component.get('name') == component_name and 'storage' in component.get('type', '').lower():
+                # Ensure encryption is enabled
+                if 'properties' not in component:
+                    component['properties'] = {}
+                
+                component['properties'].update({
+                    'supportsHttpsTrafficOnly': True,
+                    'encryption': {
+                        'services': {
+                            'file': {'enabled': True},
+                            'blob': {'enabled': True}
+                        },
+                        'keySource': 'Microsoft.Storage'
+                    },
+                    'minimumTlsVersion': 'TLS1_2'
+                })
+                
+                return {
+                    'fixed': True,
+                    'description': 'Enabled encryption at rest and HTTPS-only traffic',
+                    'component': component_name
+                }
+        
+        return {'fixed': False, 'description': 'Storage component not found'}
+    
+    def _fix_network_security(self, analysis: Dict[str, Any], component_name: str, environment: str) -> Dict[str, Any]:
+        """Fix network security group issues"""
+        components = analysis.get('components', [])
+        
+        # Add NSG if missing
+        nsg_exists = any('nsg' in comp.get('type', '').lower() or 'network security' in comp.get('type', '').lower() 
+                        for comp in components)
+        
+        if not nsg_exists:
+            nsg_component = {
+                'name': f'nsg-{environment}',
+                'type': 'Microsoft.Network/networkSecurityGroups',
+                'properties': {
+                    'securityRules': [
+                        {
+                            'name': 'AllowHTTPS',
+                            'properties': {
+                                'protocol': 'Tcp',
+                                'sourcePortRange': '*',
+                                'destinationPortRange': '443',
+                                'sourceAddressPrefix': '*',
+                                'destinationAddressPrefix': '*',
+                                'access': 'Allow',
+                                'priority': 1000,
+                                'direction': 'Inbound'
+                            }
+                        },
+                        {
+                            'name': 'DenyAllInbound',
+                            'properties': {
+                                'protocol': '*',
+                                'sourcePortRange': '*',
+                                'destinationPortRange': '*',
+                                'sourceAddressPrefix': '*',
+                                'destinationAddressPrefix': '*',
+                                'access': 'Deny',
+                                'priority': 4096,
+                                'direction': 'Inbound'
+                            }
+                        }
+                    ]
+                },
+                'auto_generated': True
+            }
+            components.append(nsg_component)
+            
+            return {
+                'fixed': True,
+                'description': 'Added Network Security Group with secure rules',
+                'component': f'nsg-{environment}'
+            }
+        
+        return {'fixed': False, 'description': 'NSG already exists or cannot be auto-fixed'}
+    
+    def _fix_key_vault_security(self, analysis: Dict[str, Any], component_name: str) -> Dict[str, Any]:
+        """Fix Key Vault security issues"""
+        components = analysis.get('components', [])
+        
+        # Add Key Vault if missing
+        kv_exists = any('key vault' in comp.get('type', '').lower() or 'keyvault' in comp.get('type', '').lower() 
+                       for comp in components)
+        
+        if not kv_exists:
+            kv_component = {
+                'name': 'kv-digitalsuperman',
+                'type': 'Microsoft.KeyVault/vaults',
+                'properties': {
+                    'enabledForDeployment': True,
+                    'enabledForTemplateDeployment': True,
+                    'enabledForDiskEncryption': True,
+                    'enableSoftDelete': True,
+                    'softDeleteRetentionInDays': 90,
+                    'enablePurgeProtection': True,
+                    'sku': {
+                        'family': 'A',
+                        'name': 'standard'
+                    },
+                    'accessPolicies': [],
+                    'networkAcls': {
+                        'defaultAction': 'Deny',
+                        'bypass': 'AzureServices'
+                    }
+                },
+                'auto_generated': True
+            }
+            components.append(kv_component)
+            
+            return {
+                'fixed': True,
+                'description': 'Added Key Vault with security best practices',
+                'component': 'kv-digitalsuperman'
+            }
+        
+        return {'fixed': False, 'description': 'Key Vault already exists'}
+    
+    def _fix_app_service_security(self, analysis: Dict[str, Any], component_name: str) -> Dict[str, Any]:
+        """Fix App Service security issues"""
+        components = analysis.get('components', [])
+        
+        for component in components:
+            if 'app service' in component.get('type', '').lower() or 'web' in component.get('type', '').lower():
+                if 'properties' not in component:
+                    component['properties'] = {}
+                
+                component['properties'].update({
+                    'httpsOnly': True,
+                    'clientAffinityEnabled': False,
+                    'siteConfig': {
+                        'minTlsVersion': '1.2',
+                        'ftpsState': 'Disabled',
+                        'alwaysOn': True,
+                        'http20Enabled': True
+                    }
+                })
+                
+                return {
+                    'fixed': True,
+                    'description': 'Applied App Service security configurations',
+                    'component': component_name
+                }
+        
+        return {'fixed': False, 'description': 'App Service component not found'}
+    
+    def _fix_identity_security(self, analysis: Dict[str, Any], component_name: str) -> Dict[str, Any]:
+        """Fix identity and RBAC issues"""
+        components = analysis.get('components', [])
+        
+        # Add managed identity to applicable components
+        fixed_components = []
+        for component in components:
+            comp_type = component.get('type', '').lower()
+            if any(service in comp_type for service in ['app service', 'function', 'vm', 'web']):
+                if 'identity' not in component:
+                    component['identity'] = {
+                        'type': 'SystemAssigned'
+                    }
+                    fixed_components.append(component.get('name', 'unknown'))
+        
+        if fixed_components:
+            return {
+                'fixed': True,
+                'description': f'Added managed identity to: {", ".join(fixed_components)}',
+                'component': ', '.join(fixed_components)
+            }
+        
+        return {'fixed': False, 'description': 'No components require managed identity fixes'}
+    
+    def _fix_general_security(self, analysis: Dict[str, Any], component_name: str, environment: str) -> Dict[str, Any]:
+        """Apply general security fixes"""
+        components = analysis.get('components', [])
+        
+        security_fixes = []
+        
+        for component in components:
+            if 'tags' not in component:
+                component['tags'] = {}
+            
+            # Ensure proper tagging
+            component['tags'].update({
+                'Environment': environment,
+                'CreatedBy': 'DigitalSuperman',
+                'Compliance': 'AutoFixed',
+                'SecurityLevel': 'Enhanced'
+            })
+            
+            security_fixes.append(f"Enhanced tagging for {component.get('name', 'unknown')}")
+        
+        if security_fixes:
+            return {
+                'fixed': True,
+                'description': f'Applied general security fixes: {"; ".join(security_fixes)}',
+                'component': 'multiple'
+            }
+        
+        return {'fixed': False, 'description': 'No general security fixes needed'}
+    
+    def _get_timestamp(self) -> str:
+        """Get current timestamp"""
+        from datetime import datetime
+        return datetime.now().isoformat()

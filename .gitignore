@@ -252,3 +252,18 @@ uploads/
 output/
 *.exe
 test-sample.*
+
+# Digital Superman - Project-specific ignores
+venv/
+.env
+*.pyc
+__pycache__/
+output/
+uploads/
+.vscode/settings.json
+
+# Development and testing files
+test_*.py
+*_test.py
+diagnose_*.ps1
+CODE_REVIEW_*.md

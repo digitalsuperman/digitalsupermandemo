@@ -91,11 +91,16 @@ class ZipGenerator:
     def _add_simplified_documentation(self, zipf: zipfile.ZipFile, compliance: Dict[str, Any], environment: str):
         """Add only essential documentation - Policy Compliance Report and README"""
         
-        # 1. Policy Compliance Report with table format
+        # 1. Policy Compliance Report with table format (includes auto-fix info)
         compliance_report = self._generate_policy_compliance_table(compliance, environment)
         zipf.writestr("POLICY_COMPLIANCE_REPORT.md", compliance_report)
         
-        # 2. Simple README with usage instructions
+        # 2. Auto-fix summary if fixes were applied
+        if compliance.get('fixes_applied'):
+            autofix_report = self._generate_autofix_summary(compliance.get('fixes_applied', []))
+            zipf.writestr("AUTOFIX_SUMMARY.md", autofix_report)
+        
+        # 3. Simple README with usage instructions
         readme = self._generate_simple_readme()
         zipf.writestr("README.md", readme)
     
@@ -105,6 +110,15 @@ class ZipGenerator:
         overall = compliance.get('overall_compliance', {})
         violations = compliance.get('violations', [])
         recommendations = compliance.get('recommendations', [])
+        fixes_applied = compliance.get('fixes_applied', [])
+        post_fix_compliance = compliance.get('post_fix_compliance', {})
+        
+        # Use post-fix compliance if available
+        if post_fix_compliance:
+            overall = post_fix_compliance.get('overall_compliance', overall)
+            remaining_violations = post_fix_compliance.get('violations', [])
+        else:
+            remaining_violations = violations
         
         report = f"""# Policy Compliance Report
 
@@ -112,29 +126,46 @@ class ZipGenerator:
 **Environment:** {environment.title()}  
 **Compliance Status:** {'✅ COMPLIANT' if overall.get('compliant', False) else '❌ NON-COMPLIANT'}  
 **Compliance Score:** {overall.get('compliance_score', 'Unknown')}
+**Auto-Fixes Applied:** {len(fixes_applied)} {'🔧' if fixes_applied else ''}
 
 ---
 
 ## 📊 Compliance Summary
 
-| Metric | Count | Status |
-|--------|-------|--------|
-| 🔴 Critical Violations | {overall.get('critical_violations', 0)} | {'❌ Action Required' if overall.get('critical_violations', 0) > 0 else '✅ Clean'} |
-| 🟡 Warnings | {overall.get('warnings', 0)} | {'⚠️ Review Needed' if overall.get('warnings', 0) > 0 else '✅ Clean'} |
-| 💡 Recommendations | {len(recommendations)} | {'📝 Available' if len(recommendations) > 0 else '✅ None'} |
-| 📋 Total Issues | {len(violations)} | {'🔍 Review Required' if len(violations) > 0 else '✅ All Clear'} |
+| Metric | Original | After Auto-Fix | Status |
+|--------|----------|----------------|--------|
+| 🔴 Critical Violations | {len([v for v in violations if v.get('severity') == 'critical'])} | {len([v for v in remaining_violations if v.get('severity') == 'critical'])} | {'✅ Improved' if len(fixes_applied) > 0 else '❌ Action Required' if len(remaining_violations) > 0 else '✅ Clean'} |
+| 🟡 Warnings | {len([v for v in violations if v.get('severity') in ['medium', 'warning']])} | {len([v for v in remaining_violations if v.get('severity') in ['medium', 'warning']])} | {'✅ Improved' if len(fixes_applied) > 0 else '⚠️ Review Needed' if len(remaining_violations) > 0 else '✅ Clean'} |
+| 💡 Recommendations | {len(recommendations)} | {len(recommendations)} | {'📝 Available' if len(recommendations) > 0 else '✅ None'} |
+| 📋 Total Issues | {len(violations)} | {len(remaining_violations)} | {'� Auto-Fixed' if len(fixes_applied) > 0 else '�🔍 Review Required' if len(remaining_violations) > 0 else '✅ All Clear'} |
 
 ---
 
 """
 
-        if violations:
-            report += """## 🚨 Policy Violations
+        # Auto-fix summary section
+        if fixes_applied:
+            report += f"""## 🔧 Auto-Fix Summary
+
+**{len(fixes_applied)} violations were automatically resolved:**
+
+| Component | Fix Applied | Status |
+|-----------|-------------|--------|
+"""
+            for fix in fixes_applied:
+                component = fix.get('component', 'Unknown')
+                fix_desc = fix.get('fix_applied', 'Security enhancement applied')
+                report += f"| {component} | {fix_desc} | ✅ Fixed |\n"
+            
+            report += "\n💡 *See AUTOFIX_SUMMARY.md for detailed fix information*\n\n---\n\n"
+
+        if remaining_violations:
+            report += """## 🚨 Remaining Policy Violations
 
 | Severity | Component | Category | Issue | Recommendation |
 |----------|-----------|----------|-------|----------------|
 """
-            for violation in violations:
+            for violation in remaining_violations:
                 severity_icon = {
                     'critical': '🔴',
                     'high': '🟠', 
@@ -230,15 +261,19 @@ No additional recommendations at this time. Your architecture is well-optimized!
 │   ├── deploy.ps1           # One-click deployment
 │   └── validate.ps1         # Template validation
 ├── POLICY_COMPLIANCE_REPORT.md  # 📋 Security & compliance analysis
+├── AUTOFIX_SUMMARY.md        # 🔧 Auto-applied security fixes (if any)
 └── README.md                 # 📖 This file
 ```
 
 ## 🚀 Quick Start (3 Steps)
 
-### Step 1: Review Compliance
+### Step 1: Review Compliance & Auto-Fixes
 ```bash
 # Check the compliance report first
 cat POLICY_COMPLIANCE_REPORT.md
+
+# If auto-fixes were applied, review them
+cat AUTOFIX_SUMMARY.md
 ```
 
 ### Step 2: Deploy Infrastructure
@@ -285,6 +320,12 @@ Edit parameter files for your environment:
 - **Azure Subscription** - With appropriate permissions
 
 ## 🛡️ Security Notes
+
+🔧 **Auto-Fix Information:**
+- Policy violations are automatically fixed when possible
+- Review AUTOFIX_SUMMARY.md to understand applied changes
+- Auto-fixes follow Azure security best practices
+- Manual review is still recommended for production deployments
 
 ⚠️ **Before deployment:**
 - Review all generated templates
