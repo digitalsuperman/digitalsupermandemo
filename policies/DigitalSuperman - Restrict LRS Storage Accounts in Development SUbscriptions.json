@@ -1,8 +1,8 @@
 {
-    "displayName": "Restrict LRS Storage Accounts in Development Subscriptions",
+    "displayName": "Restrict GRS Storage Accounts in Development Subscriptions",
     "policyType": "Custom",
     "mode": "Indexed",
-    "description": "This policy prevents the use of Locally Redundant Storage (LRS) for storage accounts in development subscriptions.",
+    "description": "This policy prevents the use of Geo-Redundant Storage (GRS) for storage accounts in development subscriptions.",
     "metadata": {
         "version": "1.0.0",
         "category": "Storage"
@@ -42,7 +42,7 @@
                 },
                 {
                     "field": "Microsoft.Storage/storageAccounts/sku.name",
-                    "equals": "Standard_LRS"
+                    "equals": "Standard_GRS"
                 }
             ]
         },
