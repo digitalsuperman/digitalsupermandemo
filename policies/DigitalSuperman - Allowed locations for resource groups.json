@@ -7,16 +7,6 @@
         "version": "1.0.0",
         "category": "General"
     },
-    "parameters": {
-        "listOfAllowedLocations": {
-            "type": "Array",
-            "metadata": {
-                "description": "The list of locations that resource groups can be created in.",
-                "strongType": "location",
-                "displayName": "Allowed locations"
-            }
-        }
-    },
     "policyRule": {
         "if": {
             "allOf": [
@@ -26,7 +16,7 @@
                 },
                 {
                     "field": "location",
-                    "notIn": "[parameters('listOfAllowedLocations')]"
+                    "notIn": ["eastus", "westus"]  // Hardcoded allowed locations
                 }
             ]
         },
