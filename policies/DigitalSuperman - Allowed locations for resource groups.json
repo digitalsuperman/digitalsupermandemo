@@ -16,7 +16,7 @@
                 },
                 {
                     "field": "location",
-                    "notIn": ["eastus", "westus"]  // Hardcoded allowed locations
+                    "notIn": ["westeurope", "swedencentral"]  // Hardcoded allowed locations
                 }
             ]
         },
