@@ -8,11 +8,13 @@ import json
 import tempfile
 from typing import Dict, Any
 from datetime import datetime
+from .cost_estimator import AzureCostEstimator
 
 class ZipGenerator:
     def __init__(self):
         self.output_dir = 'output'
         os.makedirs(self.output_dir, exist_ok=True)
+        self.cost_estimator = AzureCostEstimator()
     
     def create_zip_package(self, 
                           bicep_templates: Dict[str, Any], 
@@ -38,6 +40,9 @@ class ZipGenerator:
                 
                 # Add simplified documentation (only 2 files)
                 self._add_simplified_documentation(zipf, policy_compliance, environment)
+                
+                # Add cost estimation report
+                self._add_cost_estimation(zipf, architecture_analysis, environment)
             
             return zip_filename
             
@@ -103,6 +108,39 @@ class ZipGenerator:
         # 3. Simple README with usage instructions
         readme = self._generate_simple_readme()
         zipf.writestr("README.md", readme)
+    
+    def _add_cost_estimation(self, zipf: zipfile.ZipFile, architecture_analysis: Dict[str, Any], environment: str):
+        """Add cost estimation report to ZIP"""
+        try:
+            print(f"💰 Generating cost estimation for {environment} environment...")
+            
+            # Generate cost estimation
+            cost_estimation = self.cost_estimator.estimate_costs(architecture_analysis, environment)
+            
+            # Generate cost report
+            cost_report = self.cost_estimator.generate_cost_report(cost_estimation)
+            zipf.writestr("COST_ESTIMATION_REPORT.md", cost_report)
+            
+            # Also add cost estimation as JSON for programmatic access
+            cost_json = json.dumps(cost_estimation, indent=2)
+            zipf.writestr("cost_estimation.json", cost_json)
+            
+            print(f"💰 Cost estimation completed: ${cost_estimation.get('total_monthly_cost', 0):.2f}/month")
+            
+        except Exception as e:
+            print(f"❌ Error generating cost estimation: {str(e)}")
+            # Add error report
+            error_report = f"""# Cost Estimation Error
+
+An error occurred while generating the cost estimation:
+
+**Error**: {str(e)}
+
+**Recommendation**: Please review the architecture analysis and try again.
+
+**Note**: Cost estimation is an optional feature and does not affect the core functionality.
+"""
+            zipf.writestr("COST_ESTIMATION_ERROR.md", error_report)
     
     def _generate_enhanced_policy_compliance_report(self, compliance: Dict[str, Any], environment: str) -> str:
         """Generate enhanced policy compliance report with custom policies table at the top"""
