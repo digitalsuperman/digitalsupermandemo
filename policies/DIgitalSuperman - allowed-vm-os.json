@@ -1,6 +1,6 @@
 {
-    "displayName": "allowed-vm-os",
-    "description": "need to add description",
+    "displayName": "Azure VM OS Compliance Policy",
+    "description": "This policy ensures that virtual machines within your Azure environment are deployed with operating systems that meet compliance and compatibility standards",
     "metadata": {
         "category": "Compute",
         "version": "1.0.0"
